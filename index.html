@@ -100,7 +100,7 @@ textarea{resize:vertical;}
 </head>
 <body>
 <script>
-const API_URL = 'COLE_AQUI_A_URL_DO_SEU_APPS_SCRIPT';
+const API_URL = 'https://script.google.com/macros/s/AKfycbznzKwTd9e80aNLDZA7lOj6_yxuIxN3YIDai63FWZFUa0a0XeTHjT5L-yeUuWWyelzWDw/exec';
 
 let naninhas = [];
 let registros = [];
@@ -168,7 +168,7 @@ const NANINHAS_PADRAO = [
 ];
 
 async function carregarDados() {
-  if (!API_URL || API_URL.includes('COLE_AQUI')) {
+  if (!API_URL || API_URL.includes('https://script.google.com/macros/s/AKfycbznzKwTd9e80aNLDZA7lOj6_yxuIxN3YIDai63FWZFUa0a0XeTHjT5L-yeUuWWyelzWDw/exec')) {
     naninhas = NANINHAS_PADRAO;
     registros = [];
     trocarAba('registrar');
@@ -260,7 +260,7 @@ async function registrar() {
   const nn = naninhas.find(n => n.id === formSelecionada);
   const reg = { id: 'reg-' + Date.now(), crianca, responsavel, telefone, naninaId: nn.id, naniaNome: nn.nome, naniaEmoji: nn.emoji, oracao: nn.oracao, dataSaida, dadoOracao, devolvida: false, dataEntrada: '' };
   showToast('⏳ Salvando...');
-  if (API_URL && !API_URL.includes('COLE_AQUI')) await api('addRegistro', { data: reg });
+  if (API_URL && !API_URL.includes('https://script.google.com/macros/s/AKfycbznzKwTd9e80aNLDZA7lOj6_yxuIxN3YIDai63FWZFUa0a0XeTHjT5L-yeUuWWyelzWDw/exec')) await api('addRegistro', { data: reg });
   registros.unshift(reg);
   const msg = `Olá! 😊 A ${crianca} levou hoje a naninha de *${nn.nome}* para casa!\n\n_Oração desta semana:_\n${nn.oracao}\n\nA data de devolução é *${dataDevolucao(dataSaida)}* (próximo domingo). Qualquer dúvida, estamos à disposição! 🙏`;
   abrirModalWA(telefone, msg);
@@ -463,7 +463,7 @@ async function confirmarDevolucao() {
   if (!modalDevReg) return;
   const dataEntrada = hoje();
   showToast('⏳ Salvando...');
-  if (API_URL && !API_URL.includes('COLE_AQUI')) await api('devolverNaninha', { id: modalDevReg.id, dataEntrada });
+  if (API_URL && !API_URL.includes('https://script.google.com/macros/s/AKfycbznzKwTd9e80aNLDZA7lOj6_yxuIxN3YIDai63FWZFUa0a0XeTHjT5L-yeUuWWyelzWDw/exec')) await api('devolverNaninha', { id: modalDevReg.id, dataEntrada });
   registros = registros.map(r => r.id === modalDevReg.id ? Object.assign({}, r, { devolvida: true, dataEntrada }) : r);
   fecharDev();
   renderStats();
@@ -485,7 +485,7 @@ async function salvarNaninha() {
   if (!nome) { showToast('⚠️ Informe o nome do santo.'); return; }
   const nova = { id: 'nn-' + Date.now(), nome, emoji, oracao };
   showToast('⏳ Salvando...');
-  if (API_URL && !API_URL.includes('COLE_AQUI')) await api('addNaninha', { data: nova });
+  if (API_URL && !API_URL.includes('https://script.google.com/macros/s/AKfycbznzKwTd9e80aNLDZA7lOj6_yxuIxN3YIDai63FWZFUa0a0XeTHjT5L-yeUuWWyelzWDw/exec')) await api('addNaninha', { data: nova });
   naninhas.push(nova);
   fecharNN();
   renderNaninhas();
