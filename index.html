@@ -419,7 +419,7 @@ function renderNaninhas() {
           +'<div class="nn-list-nome">'+n.nome+'</div>'
           +'<div class="nn-list-oracao">'+(n.oracao||'Sem oração cadastrada.')+'</div>'
           +'</div>'
-          +'<button class="btn btn-sm" onclick="confirmarExcluirNaninha(''+n.id+'')" style="background:#fdecea;color:#922b21;flex-shrink:0;align-self:center;" title="Excluir">🗑️</button>'
+          +'<button class="btn btn-sm" onclick="confirmarExcluirNaninha(\''+n.id+'\')" style="background:#fdecea;color:#922b21;flex-shrink:0;align-self:center;" title="Excluir">🗑️</button>'
           +'</div>';
       }).join('');
 }
