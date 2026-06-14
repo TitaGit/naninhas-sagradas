@@ -143,7 +143,8 @@ textarea { resize: vertical; }
 .nn-list-nome { font-weight: 700; color: var(--marrom); }
 .nn-list-oracao { color: var(--marrom2); font-size: .79rem; font-style: italic; margin-top: 4px; line-height: 1.5; }
 .nn-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
-
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fadeInUp { from { opacity:0; transform:translateY(6px) translateX(-50%); } to { opacity:1; transform:translateY(0) translateX(-50%); } }
 </style>
 </head>
@@ -206,7 +207,8 @@ async function carregarDados() {
 
 // ── Status ─────────────────────────────────────────────
 function status(r) {
-  if (r.devolvida === true || r.devolvida === 'TRUE') return 'devolvida';
+  const dev = r.devolvida;
+  if (dev === true || dev === 'TRUE' || dev === 'true' || dev === 1 || dev === '1') return 'devolvida';
   if (diasAtraso(r.dataSaida) > 7) return 'atrasada';
   return 'emprestada';
 }
@@ -325,7 +327,7 @@ function renderDevolver() {
       <input type="tel" id="dev-tel" placeholder="Ex: 9988" maxlength="4" value="${devBuscaTel}"
         oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)">
     </div>
-    <button class="btn btn-primary" style="margin-bottom:20px" onclick="pesquisarDevolucao()">🔍 Pesquisar</button>
+    <button class="btn btn-primary" id="btn-pesquisar" style="margin-bottom:20px" onclick="pesquisarDevolucao()">🔍 Pesquisar</button>
     <div id="dev-resultados"></div>
   `;
   if (devResultados.length > 0) renderResultadosDev();
@@ -335,13 +337,23 @@ function pesquisarDevolucao() {
   devBuscaNome = ($('dev-nome').value || '').trim().toLowerCase();
   devBuscaTel  = ($('dev-tel').value || '').trim();
   if (!devBuscaNome && !devBuscaTel) { showToast('⚠️ Preencha ao menos um campo para pesquisar.'); return; }
-  const pendentes = registros.filter(r => status(r) !== 'devolvida');
-  devResultados = pendentes.filter(r => {
-    const nomeOk = devBuscaNome ? r.crianca.toLowerCase().includes(devBuscaNome) : true;
-    const telOk  = devBuscaTel  ? (r.telefone || '').replace(/\D/g,'').slice(-4) === devBuscaTel : true;
-    return nomeOk && telOk;
-  });
-  renderResultadosDev();
+
+  const btnPesq = $('btn-pesquisar');
+  if (btnPesq) { btnPesq.disabled = true; btnPesq.innerHTML = '<span class="spinner"></span> Pesquisando...'; }
+
+  setTimeout(() => {
+    const pendentes = registros.filter(r => {
+      const dev = r.devolvida;
+      return !(dev === true || dev === 'TRUE' || dev === 'true' || dev === 1 || dev === '1');
+    });
+    devResultados = pendentes.filter(r => {
+      const nomeOk = devBuscaNome ? r.crianca.toLowerCase().includes(devBuscaNome) : true;
+      const telOk  = devBuscaTel  ? (r.telefone || '').replace(/\D/g,'').slice(-4) === devBuscaTel : true;
+      return nomeOk && telOk;
+    });
+    if (btnPesq) { btnPesq.disabled = false; btnPesq.innerHTML = '🔍 Pesquisar'; }
+    renderResultadosDev();
+  }, 400);
 }
 
 function renderResultadosDev() {
