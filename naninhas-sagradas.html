@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Naninhas Sagradas 🕊️</title>
+<style>
+/* ── CONFIG: cole aqui a URL do seu Apps Script ── */
+/* (veja o arquivo LEIA-ME-CONFIGURACAO.md)         */
+
+:root {
+  --azul:       #1e3a5f;
+  --azul2:      #2e5490;
+  --dourado:    #b8952a;
+  --dourado-c:  #e8c967;
+  --creme:      #fdf6e8;
+  --creme2:     #f0e4c8;
+  --marrom:     #5a3a1a;
+  --marrom2:    #8b6340;
+  --verde:      #2d6a4f;
+  --vermelho:   #922b21;
+  --verm-c:     #f5b7b1;
+  --cinza:      #888;
+  --branco:     #ffffff;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; background: var(--creme); min-height: 100vh; }
+
+/* HEADER */
+header { background: linear-gradient(135deg, var(--azul), var(--azul2)); padding: 18px 20px; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+header .icon { font-size: 1.9rem; }
+header h1 { font-family: Georgia, serif; color: var(--dourado-c); font-size: 1.25rem; letter-spacing: .5px; }
+header p { color: rgba(255,255,255,.55); font-size: .75rem; margin-top: 2px; }
+
+/* STATS */
+.stats { display: flex; gap: 8px; padding: 12px 16px; background: var(--branco); border-bottom: 1px solid var(--creme2); flex-wrap: wrap; }
+.stat { border-radius: 30px; padding: 7px 14px; font-size: .78rem; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.stat-fora { background: #e8f4fd; color: var(--azul); }
+.stat-atraso { background: #fdecea; color: var(--vermelho); }
+.stat-dev { background: #e9f7ef; color: var(--verde); }
+.stat-num { font-size: 1.1rem; }
+
+/* TABS */
+.tabs { display: flex; background: var(--branco); border-bottom: 2px solid var(--creme2); overflow-x: auto; }
+.tab { padding: 13px 18px; border: none; background: none; cursor: pointer; font-weight: 700; font-size: .82rem; white-space: nowrap; color: var(--cinza); border-bottom: 3px solid transparent; transition: all .15s; font-family: inherit; }
+.tab.active { color: var(--azul); border-bottom-color: var(--dourado); }
+
+/* MAIN */
+.main { padding: 20px 16px; max-width: 680px; margin: 0 auto; }
+.section-title { color: var(--azul); font-family: Georgia, serif; font-size: 1.05rem; margin-bottom: 16px; }
+.section-sub { color: var(--cinza); font-size: .82rem; margin-bottom: 14px; }
+
+/* FORM */
+.field { margin-bottom: 14px; }
+.label { display: block; font-weight: 700; color: var(--marrom); margin-bottom: 6px; font-size: .83rem; }
+input[type=text], input[type=date], input[type=tel], textarea, select {
+  width: 100%; padding: 10px 13px; border-radius: 10px; border: 1.5px solid var(--creme2);
+  font-size: .88rem; background: var(--branco); color: var(--marrom); outline: none; font-family: inherit;
+}
+input:focus, textarea:focus, select:focus { border-color: var(--dourado); box-shadow: 0 0 0 3px #b8952a22; }
+textarea { resize: vertical; }
+
+/* NANINHAS GRID */
+.nn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 10px; margin-top: 8px; }
+.nn-card { border: 2px solid var(--creme2); background: var(--branco); border-radius: 12px; padding: 12px 8px; text-align: center; cursor: pointer; transition: all .15s; }
+.nn-card.selected { border-color: var(--dourado); background: #fff8e7; }
+.nn-card .nn-emoji { font-size: 1.9rem; }
+.nn-card .nn-nome { font-size: .69rem; font-weight: 700; color: var(--marrom); margin-top: 5px; line-height: 1.3; }
+
+/* ORAÇÃO PREVIEW */
+.oracao-box { background: #f5f0e8; border: 1.5px solid var(--dourado); border-radius: 12px; padding: 13px; margin-top: 4px; display: none; }
+.oracao-box.show { display: block; }
+.oracao-label { font-size: .68rem; font-weight: 700; color: var(--dourado); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+.oracao-text { font-size: .83rem; color: var(--marrom2); font-style: italic; line-height: 1.6; }
+
+/* CHECKBOX */
+.check-row { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+.check-row input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--dourado); cursor: pointer; flex-shrink: 0; }
+.check-row label { font-weight: 700; color: var(--marrom); font-size: .88rem; cursor: pointer; }
+
+/* BUTTONS */
+.btn { border: none; border-radius: 10px; padding: 10px 18px; cursor: pointer; font-weight: 700; font-size: .88rem; font-family: inherit; transition: opacity .15s; }
+.btn:hover { opacity: .88; }
+.btn-primary { background: var(--azul); color: var(--branco); width: 100%; padding: 14px; font-size: .95rem; border-radius: 12px; margin-top: 6px; }
+.btn-verde { background: var(--verde); color: var(--branco); }
+.btn-wa { background: #25D366; color: var(--branco); }
+.btn-vermelho { background: var(--vermelho); color: var(--branco); }
+.btn-ghost { background: var(--creme2); color: var(--marrom); }
+.btn-dourado { background: var(--dourado); color: var(--marrom); }
+.btn-sm { font-size: .78rem; padding: 6px 12px; border-radius: 8px; }
+
+/* CARDS DE REGISTRO */
+.card { background: var(--branco); border-radius: 14px; padding: 15px; margin-bottom: 10px; border: 1.5px solid var(--creme2); }
+.card.atrasada { border-color: var(--verm-c); }
+.card-top { display: flex; align-items: flex-start; gap: 12px; }
+.card-emoji { font-size: 1.8rem; flex-shrink: 0; }
+.card-info { flex: 1; }
+.card-nome { font-weight: 700; color: var(--marrom); font-size: .95rem; }
+.card-meta { color: var(--marrom2); font-size: .78rem; margin-top: 2px; }
+.card-dias { font-size: .73rem; margin-top: 3px; }
+.card-dias.ok { color: var(--cinza); }
+.card-dias.late { color: var(--vermelho); font-weight: 700; }
+.card-dado { font-size: .71rem; color: var(--dourado); font-weight: 700; margin-top: 2px; }
+.card-actions { display: flex; gap: 7px; margin-top: 10px; flex-wrap: wrap; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: .72rem; font-weight: 700; }
+.badge-emp { background: #fff3cd; color: #856404; }
+.badge-atr { background: #f8d7da; color: #721c24; }
+.badge-dev { background: #d4edda; color: #155724; }
+
+/* FILTROS */
+.filtros { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
+.filtro { border: 1.5px solid var(--creme2); background: var(--branco); color: var(--marrom); border-radius: 30px; padding: 6px 14px; font-size: .78rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+.filtro.active { background: var(--azul); color: var(--branco); border-color: var(--azul); }
+
+/* BUSCA */
+.busca { width: 100%; padding: 10px 13px; border-radius: 10px; border: 1.5px solid var(--creme2); font-size: .88rem; background: var(--branco); color: var(--marrom); outline: none; font-family: inherit; margin-bottom: 14px; }
+.busca:focus { border-color: var(--dourado); }
+
+/* EMPTY */
+.empty { text-align: center; color: var(--cinza); padding: 40px 20px; background: var(--branco); border-radius: 16px; }
+.empty .empty-icon { font-size: 2.8rem; margin-bottom: 10px; }
+
+/* MODAL */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+.overlay.open { display: flex; }
+.modal { background: var(--branco); border-radius: 16px; padding: 22px; max-width: 460px; width: 100%; box-shadow: 0 8px 40px rgba(0,0,0,.2); }
+.modal h3 { color: var(--azul); font-family: Georgia, serif; font-size: 1.05rem; margin-bottom: 14px; }
+.modal p { color: var(--marrom); font-size: .9rem; line-height: 1.5; margin-bottom: 10px; }
+.modal textarea { width: 100%; min-height: 150px; }
+.modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+.aviso-dado { color: var(--dourado); font-size: .83rem; font-weight: 700; margin-top: 8px; }
+
+/* LOADER */
+.loader { text-align: center; padding: 30px; color: var(--cinza); font-size: .9rem; }
+
+/* TOAST */
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--azul); color: var(--branco); padding: 11px 22px; border-radius: 40px; font-weight: 700; font-size: .88rem; z-index: 9999; display: none; box-shadow: 0 4px 20px rgba(0,0,0,.3); white-space: nowrap; }
+
+/* TABS DE NANINHAS */
+.nn-list-item { background: var(--branco); border-radius: 13px; padding: 14px; margin-bottom: 9px; border: 1.5px solid var(--creme2); display: flex; align-items: flex-start; gap: 12px; }
+.nn-list-emoji { font-size: 1.8rem; flex-shrink: 0; }
+.nn-list-info { flex: 1; }
+.nn-list-nome { font-weight: 700; color: var(--marrom); }
+.nn-list-oracao { color: var(--marrom2); font-size: .79rem; font-style: italic; margin-top: 4px; line-height: 1.5; }
+.nn-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+
+@keyframes fadeInUp { from { opacity:0; transform:translateY(6px) translateX(-50%); } to { opacity:1; transform:translateY(0) translateX(-50%); } }
+</style>
+</head>
+<body>
+
+<script>
+// ══════════════════════════════════════════════════════
+// ⚙️  CONFIGURAÇÃO — cole aqui a URL do Apps Script
+// ══════════════════════════════════════════════════════
+const API_URL = 'https://script.google.com/macros/s/AKfycbznzKwTd9e80aNLDZA7lOj6_yxuIxN3YIDai63FWZFUa0a0XeTHjT5L-yeUuWWyelzWDw/exec';
+// ══════════════════════════════════════════════════════
+
+// ── Estado global ──────────────────────────────────────
+let naninhas = [];
+let registros = [];
+let abaAtual = 'registrar';
+let filtroAtual = 'todos';
+let buscaAtual = '';
+let formSelecionada = null;
+let modalDevReg = null;
+
+// ── Utilitários ────────────────────────────────────────
+const hoje = () => new Date().toISOString().split('T')[0];
+const fmtData = d => { if (!d) return ''; const s = d.includes('T') ? d.split('T')[0] : d; const [y,m,dia] = s.split('-'); return `${dia}/${m}/${y}`; };
+const diasAtraso = d => Math.floor((new Date() - new Date(d)) / 86400000);
+const dataDevolucao = dataSaida => { const d = new Date(dataSaida + 'T12:00:00'); d.setDate(d.getDate() + 7); return fmtData(d.toISOString().split('T')[0]); };
+const $ = id => document.getElementById(id);
+
+function showToast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  t.style.animation = 'fadeInUp .2s ease';
+  setTimeout(() => { t.style.display = 'none'; }, 3000);
+}
+
+// ── API ────────────────────────────────────────────────
+async function api(action, data = {}) {
+  const payload = { action, ...data };
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: { 'Content-Type': 'text/plain' }
+  });
+  return res.json();
+}
+
+// ── Carregar dados ─────────────────────────────────────
+async function carregarDados() {
+  try {
+    [naninhas, registros] = await Promise.all([
+      api('getNaninhas'),
+      api('getRegistros')
+    ]);
+    renderTudo();
+  } catch (e) {
+    $('conteudo').innerHTML = '<div class="loader">⚠️ Erro ao conectar. Verifique a URL do Apps Script no arquivo.</div>';
+  }
+}
+
+// ── Status ─────────────────────────────────────────────
+function status(r) {
+  if (r.devolvida === true || r.devolvida === 'TRUE') return 'devolvida';
+  if (diasAtraso(r.dataSaida) > 7) return 'atrasada';
+  return 'emprestada';
+}
+
+// ── Stats ──────────────────────────────────────────────
+function renderStats() {
+  const fora = registros.filter(r => status(r) !== 'devolvida').length;
+  const atr  = registros.filter(r => status(r) === 'atrasada').length;
+  const dev  = registros.filter(r => status(r) === 'devolvida').length;
+  $('stat-fora').textContent = fora;
+  $('stat-atr').textContent  = atr;
+  $('stat-dev').textContent  = dev;
+}
+
+// ── Render principal ───────────────────────────────────
+function renderTudo() {
+  renderStats();
+  if (abaAtual === 'registrar') renderRegistrar();
+  else if (abaAtual === 'devolver') renderDevolver();
+  else if (abaAtual === 'historico') renderHistorico();
+  else if (abaAtual === 'naninhas') renderNaninhas();
+  else renderRegistrar(); // fallback seguro
+}
+
+function trocarAba(aba) {
+  abaAtual = aba;
+  buscaAtual = '';
+  filtroAtual = 'todos';
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.aba === aba));
+  // chama diretamente para garantir que o conteúdo correto é renderizado
+  if (aba === 'registrar') renderRegistrar();
+  else if (aba === 'devolver') renderDevolver();
+  else if (aba === 'historico') renderHistorico();
+  else if (aba === 'naninhas') renderNaninhas();
+  renderStats();
+}
+
+// ══ ABA REGISTRAR ══════════════════════════════════════
+function renderRegistrar() {
+  $('conteudo').innerHTML = `
+    <h2 class="section-title">Registrar novo empréstimo</h2>
+    <div class="field"><label class="label">Nome da criança *</label><input type="text" id="r-crianca" placeholder="Ex: Maria Clara"></div>
+    <div class="field"><label class="label">Responsável</label><input type="text" id="r-resp" placeholder="Nome do pai / mãe / responsável"></div>
+    <div class="field"><label class="label">Telefone (WhatsApp) *</label><input type="tel" id="r-tel" placeholder="Ex: 11 99999-9999"></div>
+    <div class="field">
+      <label class="label">Escolha a naninha *</label>
+      <div class="nn-grid" id="reg-nn-grid"></div>
+    </div>
+    <div class="oracao-box" id="oracao-box">
+      <div class="oracao-label">Oração que será enviada</div>
+      <div class="oracao-text" id="oracao-preview"></div>
+    </div>
+    <div class="field" style="margin-top:14px"><label class="label">Data de saída</label><input type="date" id="r-data" value="${hoje()}"></div>
+    <div class="check-row"><input type="checkbox" id="r-dado"><label for="r-dado">🎲 Dado de oração saiu junto</label></div>
+    <button class="btn btn-primary" onclick="registrar()">✅ Registrar saída e gerar mensagem WhatsApp</button>
+  `;
+  renderNaninhasGrid();
+}
+
+function renderNaninhasGrid() {
+  const grid = $('reg-nn-grid');
+  if (!grid) return;
+  grid.innerHTML = naninhas.map(n => `
+    <div class="nn-card ${formSelecionada === n.id ? 'selected' : ''}" onclick="selecionarNaninha('${n.id}')">
+      <div class="nn-emoji">${n.emoji}</div>
+      <div class="nn-nome">${n.nome}</div>
+    </div>
+  `).join('');
+}
+
+function selecionarNaninha(id) {
+  formSelecionada = id;
+  const nn = naninhas.find(n => n.id === id);
+  const box = $('oracao-box');
+  $('oracao-preview').textContent = nn?.oracao || '';
+  box.classList.toggle('show', !!nn);
+  renderNaninhasGrid();
+}
+
+async function registrar() {
+  const crianca = $('r-crianca').value.trim();
+  const responsavel = $('r-resp').value.trim();
+  const telefone = $('r-tel').value.trim();
+  const dataSaida = $('r-data').value;
+  const dadoOracao = $('r-dado').checked;
+  if (!crianca || !telefone || !formSelecionada) { showToast('⚠️ Preencha criança, telefone e escolha a naninha!'); return; }
+  const nn = naninhas.find(n => n.id === formSelecionada);
+  const reg = { id: 'reg-' + Date.now(), crianca, responsavel, telefone, naninaId: nn.id, naniaNome: nn.nome, naniaEmoji: nn.emoji, oracao: nn.oracao, dataSaida, dadoOracao, devolvida: false, dataEntrada: '' };
+  showToast('⏳ Salvando...');
+  await api('addRegistro', { data: reg });
+  registros.unshift(reg);
+  const msg = `Olá! 😊 A ${crianca} levou hoje a naninha de *${nn.nome}* para casa!\n\n_Oração desta semana:_\n${nn.oracao}\n\nA data de devolução é *${dataDevolucao(dataSaida)}* (próximo domingo). Qualquer dúvida, estamos à disposição! 🙏`;
+  abrirModalWA(telefone, msg);
+  formSelecionada = null;
+  renderStats();
+  showToast('✅ Entrega registrada!');
+}
+
+// ══ ABA DEVOLVER ═══════════════════════════════════════
+// ══ ABA DEVOLVER ═══════════════════════════════════════
+let devBuscaNome = '';
+let devBuscaTel = '';
+let devResultados = [];
+
+function renderDevolver() {
+  const pendentes = registros.filter(r => status(r) !== 'devolvida');
+  $('conteudo').innerHTML = `
+    <h2 class="section-title">Registrar devolução</h2>
+    <p class="section-sub">${pendentes.length} naninha${pendentes.length !== 1 ? 's' : ''} ainda fora da paróquia</p>
+    <div class="field">
+      <label class="label">Nome da criança</label>
+      <input type="text" id="dev-nome" placeholder="Ex: Maria Clara" value="${devBuscaNome}">
+    </div>
+    <div class="field">
+      <label class="label">4 últimos dígitos do telefone</label>
+      <input type="tel" id="dev-tel" placeholder="Ex: 9988" maxlength="4" value="${devBuscaTel}"
+        oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)">
+    </div>
+    <button class="btn btn-primary" style="margin-bottom:20px" onclick="pesquisarDevolucao()">🔍 Pesquisar</button>
+    <div id="dev-resultados"></div>
+  `;
+  if (devResultados.length > 0) renderResultadosDev();
+}
+
+function pesquisarDevolucao() {
+  devBuscaNome = ($('dev-nome').value || '').trim().toLowerCase();
+  devBuscaTel  = ($('dev-tel').value || '').trim();
+  if (!devBuscaNome && !devBuscaTel) { showToast('⚠️ Preencha ao menos um campo para pesquisar.'); return; }
+  const pendentes = registros.filter(r => status(r) !== 'devolvida');
+  devResultados = pendentes.filter(r => {
+    const nomeOk = devBuscaNome ? r.crianca.toLowerCase().includes(devBuscaNome) : true;
+    const telOk  = devBuscaTel  ? (r.telefone || '').replace(/\D/g,'').slice(-4) === devBuscaTel : true;
+    return nomeOk && telOk;
+  });
+  renderResultadosDev();
+}
+
+function renderResultadosDev() {
+  const el = $('dev-resultados');
+  if (!el) return;
+  if (devResultados.length === 0) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><p>Nenhuma naninha encontrada com esses dados.</p></div>';
+    return;
+  }
+  el.innerHTML = devResultados.map(r => {
+    const dias = diasAtraso(r.dataSaida);
+    const atr  = dias > 7;
+    return `
+      <div class="card ${atr ? 'atrasada' : ''}">
+        <div class="card-top">
+          <div class="card-emoji">${r.naniaEmoji}</div>
+          <div class="card-info">
+            <div class="card-nome">${r.crianca}</div>
+            <div class="card-meta">${r.naniaNome} · ${r.responsavel || '—'}</div>
+            <div class="card-meta">Saiu: ${fmtData(r.dataSaida)} · Devolver: ${dataDevolucao(r.dataSaida)}</div>
+            ${r.dadoOracao === true || r.dadoOracao === 'TRUE' ? '<div class="card-dado">🎲 Saiu com dado de oração</div>' : ''}
+            <div class="card-dias ${atr ? 'late' : 'ok'}">${dias === 0 ? 'Saiu hoje' : `${dias} dia${dias > 1 ? 's' : ''} fora`}${atr ? ' · ATRASADA' : ''}</div>
+          </div>
+          <button class="btn btn-sm btn-verde" onclick="abrirDevolucao('${r.id}')">↩️ Registrar devolução</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ══ ABA HISTÓRICO ══════════════════════════════════════
+function renderHistorico() {
+  const filtrados = registros.filter(r => {
+    if (filtroAtual !== 'todos' && status(r) !== filtroAtual) return false;
+    if (buscaAtual) { const b = buscaAtual.toLowerCase(); if (!r.crianca.toLowerCase().includes(b) && !(r.naniaNome||'').toLowerCase().includes(b) && !(r.responsavel||'').toLowerCase().includes(b)) return false; }
+    return true;
+  });
+  $('conteudo').innerHTML = `
+    <h2 class="section-title">Histórico de empréstimos</h2>
+    <div class="filtros">
+      ${[['todos','Todos'],['emprestada','📤 Fora'],['atrasada','⚠️ Atrasadas'],['devolvida','✅ Devolvidas']].map(([v,l]) =>
+        `<button class="filtro ${filtroAtual===v?'active':''}" onclick="filtroAtual='${v}';renderHistorico()">${l}</button>`
+      ).join('')}
+    </div>
+    <input class="busca" placeholder="🔍 Buscar por criança, santo ou responsável..." value="${buscaAtual}" oninput="buscaAtual=this.value;renderHistorico()">
+    ${filtrados.length === 0 ? '<div class="empty"><div class="empty-icon">📋</div><p>Nenhum registro encontrado.</p></div>' : filtrados.map(r => cardHistorico(r)).join('')}
+  `;
+}
+
+function cardHistorico(r) {
+  const st = status(r);
+  const badge = st === 'devolvida' ? '<span class="badge badge-dev">✅ Devolvida</span>' : st === 'atrasada' ? '<span class="badge badge-atr">⚠️ Atrasada</span>' : '<span class="badge badge-emp">📤 Emprestada</span>';
+  const dado = (r.dadoOracao === true || r.dadoOracao === 'TRUE') ? '<div class="card-dado">🎲 Com dado de oração</div>' : '';
+  const acoes = st !== 'devolvida' ? `
+    <div class="card-actions">
+      <button class="btn btn-sm btn-wa" onclick="abrirWALembrete('${r.id}','lembrete')">📲 Lembrete</button>
+      ${st === 'atrasada' ? `<button class="btn btn-sm btn-vermelho" onclick="abrirWALembrete('${r.id}','cobranca')">🔔 Cobrança</button>` : ''}
+      <button class="btn btn-sm btn-verde" onclick="abrirDevolucao('${r.id}')">↩️ Devolvida</button>
+    </div>` : '';
+  return `
+    <div class="card ${st==='atrasada'?'atrasada':''}">
+      <div class="card-top">
+        <div class="card-emoji">${r.naniaEmoji}</div>
+        <div class="card-info">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
+            <div>
+              <div class="card-nome">${r.crianca}</div>
+              <div class="card-meta">${r.naniaNome} · ${r.responsavel||'—'} · ${r.telefone}</div>
+              <div class="card-meta">Saiu: ${fmtData(r.dataSaida)}${r.devolvida && r.dataEntrada ? ` · Voltou: ${fmtData(r.dataEntrada)}` : ''}</div>
+              ${dado}
+            </div>
+            ${badge}
+          </div>
+          ${acoes}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ══ ABA NANINHAS ═══════════════════════════════════════
+function renderNaninhas() {
+  $('conteudo').innerHTML = `
+    <div class="nn-top-row">
+      <h2 class="section-title" style="margin:0">Naninhas cadastradas</h2>
+      <button class="btn btn-dourado btn-sm" onclick="abrirModalNaninha()">+ Nova naninha</button>
+    </div>
+    ${naninhas.map(n => `
+      <div class="nn-list-item">
+        <div class="nn-list-emoji">${n.emoji}</div>
+        <div class="nn-list-info">
+          <div class="nn-list-nome">${n.nome}</div>
+          <div class="nn-list-oracao">${n.oracao || 'Sem oração cadastrada.'}</div>
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+
+// ══ MODAL WA ═══════════════════════════════════════════
+function abrirModalWA(telefone, msg) {
+  $('wa-textarea').value = msg;
+  $('wa-tel').value = telefone;
+  $('modal-wa').classList.add('open');
+}
+function fecharWA() { $('modal-wa').classList.remove('open'); }
+function enviarWA() {
+  const tel = $('wa-tel').value.replace(/\D/g,'');
+  const msg = $('wa-textarea').value;
+  window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`, '_blank');
+  fecharWA();
+}
+function abrirWALembrete(id, tipo) {
+  const r = registros.find(x => x.id === id);
+  const nn = naninhas.find(n => n.id === r.naninaId);
+  const dataDevol = dataDevolucao(r.dataSaida);
+  const msg = tipo === 'lembrete'
+    ? `Olá! 😊 Só passando pra lembrar que a ${r.crianca} ainda está com a naninha de *${nn?.nome || r.naniaNome}*.\n\nA data de devolução é *${dataDevol}*. Por favor, lembre de trazer no próximo domingo. Obrigada! 🙏`
+    : `Olá! 🙏 A naninha de *${nn?.nome || r.naniaNome}* da ${r.crianca} já está há ${diasAtraso(r.dataSaida)} dias com vocês. A data de devolução era *${dataDevol}*.\n\nPor favor, lembre de trazer no próximo domingo. Contamos com a colaboração de vocês! 💛`;
+  abrirModalWA(r.telefone, msg);
+}
+
+// ══ MODAL DEVOLUÇÃO ════════════════════════════════════
+function abrirDevolucao(id) {
+  modalDevReg = registros.find(r => r.id === id);
+  const nn = naninhas.find(n => n.id === modalDevReg?.naninaId);
+  $('dev-texto').innerHTML = `Confirmar devolução da naninha de <strong>${nn?.nome || modalDevReg.naniaNome}</strong> pela criança <strong>${modalDevReg.crianca}</strong>?`;
+  const dado = modalDevReg.dadoOracao === true || modalDevReg.dadoOracao === 'TRUE';
+  $('dev-dado').style.display = dado ? 'block' : 'none';
+  $('modal-dev').classList.add('open');
+}
+function fecharDev() { $('modal-dev').classList.remove('open'); modalDevReg = null; }
+async function confirmarDevolucao() {
+  if (!modalDevReg) return;
+  const dataEntrada = hoje();
+  showToast('⏳ Salvando...');
+  await api('devolverNaninha', { id: modalDevReg.id, dataEntrada });
+  registros = registros.map(r => r.id === modalDevReg.id ? { ...r, devolvida: true, dataEntrada } : r);
+  fecharDev();
+  renderStats();
+  renderTudo();
+  showToast('✅ Devolução registrada!');
+}
+
+// ══ MODAL NOVA NANINHA ══════════════════════════════════
+function abrirModalNaninha() { $('modal-nn').classList.add('open'); }
+function fecharNN() { $('modal-nn').classList.remove('open'); $('nn-nome').value=''; $('nn-emoji').value='🙏'; $('nn-oracao').value=''; }
+async function salvarNaninha() {
+  const nome = $('nn-nome').value.trim();
+  const emoji = $('nn-emoji').value.trim() || '🙏';
+  const oracao = $('nn-oracao').value.trim();
+  if (!nome) { showToast('⚠️ Informe o nome do santo.'); return; }
+  const nova = { id: 'nn-' + Date.now(), nome, emoji, oracao };
+  showToast('⏳ Salvando...');
+  await api('addNaninha', { data: nova });
+  naninhas.push(nova);
+  fecharNN();
+  renderNaninhas();
+  showToast('✅ Naninha cadastrada!');
+}
+
+// ── Init ────────────────────────────────────────────────
+window.onload = () => {
+  carregarDados();
+};
+</script>
+
+<!-- HEADER -->
+<header>
+  <div class="icon">🕊️</div>
+  <div>
+    <h1>Naninhas Sagradas</h1>
+    <p>Evangelização Infantil · Controle de Empréstimo</p>
+  </div>
+</header>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat stat-fora"><span class="stat-num" id="stat-fora">—</span> Fora da paróquia</div>
+  <div class="stat stat-atraso"><span class="stat-num" id="stat-atr">—</span> Em atraso</div>
+  <div class="stat stat-dev"><span class="stat-num" id="stat-dev">—</span> Devolvidas</div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" data-aba="registrar" onclick="trocarAba('registrar')">✏️ Registrar novo empréstimo</button>
+  <button class="tab" data-aba="devolver" onclick="trocarAba('devolver')">↩️ Devolver</button>
+  <button class="tab" data-aba="historico" onclick="trocarAba('historico')">📋 Histórico</button>
+  <button class="tab" data-aba="naninhas" onclick="trocarAba('naninhas')">🧸 Naninhas</button>
+</div>
+
+<!-- CONTEÚDO -->
+<div class="main">
+  <div id="conteudo"><div class="loader">Carregando... 🕊️</div></div>
+</div>
+
+<!-- MODAL WA -->
+<div class="overlay" id="modal-wa" onclick="if(event.target===this)fecharWA()">
+  <div class="modal">
+    <h3>📲 Enviar pelo WhatsApp</h3>
+    <p style="font-size:.82rem;color:var(--cinza);margin-bottom:8px">Edite a mensagem antes de enviar:</p>
+    <input type="hidden" id="wa-tel">
+    <textarea id="wa-textarea" rows="8"></textarea>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="fecharWA()">Cancelar</button>
+      <button class="btn btn-wa" onclick="enviarWA()">📲 Abrir WhatsApp</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DEVOLUÇÃO -->
+<div class="overlay" id="modal-dev" onclick="if(event.target===this)fecharDev()">
+  <div class="modal">
+    <h3>↩️ Confirmar devolução</h3>
+    <p id="dev-texto"></p>
+    <p class="aviso-dado" id="dev-dado">🎲 Lembre de conferir se o dado de oração voltou junto!</p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="fecharDev()">Cancelar</button>
+      <button class="btn btn-verde" onclick="confirmarDevolucao()">✅ Confirmar devolução</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOVA NANINHA -->
+<div class="overlay" id="modal-nn" onclick="if(event.target===this)fecharNN()">
+  <div class="modal">
+    <h3>🧸 Cadastrar nova naninha</h3>
+    <div class="field"><label class="label">Nome do santo *</label><input type="text" id="nn-nome" placeholder="Ex: Santa Teresinha"></div>
+    <div class="field"><label class="label">Emoji</label><input type="text" id="nn-emoji" value="🙏" style="width:80px"></div>
+    <div class="field"><label class="label">Oração</label><textarea id="nn-oracao" rows="4" placeholder="Escreva a oração que será enviada pelo WhatsApp..."></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="fecharNN()">Cancelar</button>
+      <button class="btn btn-primary" style="width:auto;padding:10px 18px" onclick="salvarNaninha()">✅ Cadastrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+</body>
+</html>
