@@ -308,10 +308,10 @@ async function registrar() {
 }
 
 // ══ ABA DEVOLVER ═══════════════════════════════════════
-// ══ ABA DEVOLVER ═══════════════════════════════════════
 let devBuscaNome = '';
 let devBuscaTel = '';
 let devResultados = [];
+let devJaPesquisou = false;
 
 function renderDevolver() {
   const pendentes = registros.filter(r => status(r) !== 'devolvida');
@@ -320,50 +320,30 @@ function renderDevolver() {
     <p class="section-sub">${pendentes.length} naninha${pendentes.length !== 1 ? 's' : ''} ainda fora da paróquia</p>
     <div class="field">
       <label class="label">Nome da criança</label>
-      <input type="text" id="dev-nome" placeholder="Ex: Maria Clara" value="${devBuscaNome}">
+      <input type="text" id="dev-nome" placeholder="Ex: Maria Clara" value="${devBuscaNome}"
+        onkeydown="if(event.key==='Enter') pesquisarDevolucao()">
     </div>
     <div class="field">
       <label class="label">4 últimos dígitos do telefone</label>
       <input type="tel" id="dev-tel" placeholder="Ex: 9988" maxlength="4" value="${devBuscaTel}"
-        oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)">
+        oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)"
+        onkeydown="if(event.key==='Enter') pesquisarDevolucao()">
     </div>
     <button class="btn btn-primary" id="btn-pesquisar" style="margin-bottom:20px" onclick="pesquisarDevolucao()">🔍 Pesquisar</button>
-    <div id="dev-resultados"></div>
+    <div id="dev-resultados">${devJaPesquisou ? _htmlResultadosDev() : ''}</div>
   `;
-  if (devResultados.length > 0) renderResultadosDev();
 }
 
-function pesquisarDevolucao() {
-  devBuscaNome = ($('dev-nome').value || '').trim().toLowerCase();
-  devBuscaTel  = ($('dev-tel').value || '').trim();
-  if (!devBuscaNome && !devBuscaTel) { showToast('⚠️ Preencha ao menos um campo para pesquisar.'); return; }
-
-  const btnPesq = $('btn-pesquisar');
-  if (btnPesq) { btnPesq.disabled = true; btnPesq.innerHTML = '<span class="spinner"></span> Pesquisando...'; }
-
-  setTimeout(() => {
-    const pendentes = registros.filter(r => {
-      const dev = r.devolvida;
-      return !(dev === true || dev === 'TRUE' || dev === 'true' || dev === 1 || dev === '1');
-    });
-    devResultados = pendentes.filter(r => {
-      const nomeOk = devBuscaNome ? r.crianca.toLowerCase().includes(devBuscaNome) : true;
-      const telOk  = devBuscaTel  ? (r.telefone || '').replace(/\D/g,'').slice(-4) === devBuscaTel : true;
-      return nomeOk && telOk;
-    });
-    if (btnPesq) { btnPesq.disabled = false; btnPesq.innerHTML = '🔍 Pesquisar'; }
-    renderResultadosDev();
-  }, 400);
+function _isPendente(r) {
+  const dev = r.devolvida;
+  return !(dev === true || dev === 'TRUE' || dev === 'true' || dev === 1 || dev === '1');
 }
 
-function renderResultadosDev() {
-  const el = $('dev-resultados');
-  if (!el) return;
+function _htmlResultadosDev() {
   if (devResultados.length === 0) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><p>Nenhuma naninha encontrada com esses dados.</p></div>';
-    return;
+    return '<div class="empty"><div class="empty-icon">🔍</div><p>Não encontramos naninhas para registrar devolução.</p></div>';
   }
-  el.innerHTML = devResultados.map(r => {
+  return devResultados.map(r => {
     const dias = diasAtraso(r.dataSaida);
     const atr  = dias > 7;
     return `
@@ -381,6 +361,35 @@ function renderResultadosDev() {
         </div>
       </div>`;
   }).join('');
+}
+
+function pesquisarDevolucao() {
+  devBuscaNome = ($('dev-nome').value || '').trim().toLowerCase();
+  devBuscaTel  = ($('dev-tel').value || '').trim();
+  if (!devBuscaNome && !devBuscaTel) { showToast('⚠️ Preencha ao menos um campo para pesquisar.'); return; }
+
+  const btnPesq = $('btn-pesquisar');
+  if (btnPesq) { btnPesq.disabled = true; btnPesq.innerHTML = '<span class="spinner"></span> Pesquisando...'; }
+
+  setTimeout(() => {
+    const pendentes = registros.filter(_isPendente);
+    devResultados = pendentes.filter(r => {
+      const nomeOk = devBuscaNome ? r.crianca.toLowerCase().includes(devBuscaNome) : true;
+      const telOk  = devBuscaTel  ? (r.telefone || '').replace(/\D/g,'').slice(-4) === devBuscaTel : true;
+      return nomeOk && telOk;
+    });
+    devJaPesquisou = true;
+
+    if (btnPesq) { btnPesq.disabled = false; btnPesq.innerHTML = '🔍 Pesquisar'; }
+
+    const el = $('dev-resultados');
+    if (el) el.innerHTML = _htmlResultadosDev();
+  }, 400);
+}
+
+function renderResultadosDev() {
+  const el = $('dev-resultados');
+  if (el) el.innerHTML = _htmlResultadosDev();
 }
 
 // ══ ABA HISTÓRICO ══════════════════════════════════════
