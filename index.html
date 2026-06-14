@@ -102,462 +102,291 @@ textarea{resize:vertical;}
 <script>
 const API_URL = 'https://script.google.com/macros/s/AKfycbznzKwTd9e80aNLDZA7lOj6_yxuIxN3YIDai63FWZFUa0a0XeTHjT5L-yeUuWWyelzWDw/exec';
 
-let naninhas = [];
-let registros = [];
-let abaAtual = 'registrar';
-let filtroAtual = 'todos';
-let buscaAtual = '';
-let formSelecionada = null;
-let modalDevReg = null;
-let devBuscaNome = '';
-let devBuscaTel = '';
-let devResultados = [];
-let devJaPesquisou = false;
+let naninhas = [], registros = [], abaAtual = 'registrar', filtroAtual = 'todos';
+let buscaAtual = '', formSelecionada = null, modalDevReg = null;
+let devBuscaNome = '', devBuscaTel = '', devResultados = [], devJaPesquisou = false;
 
 const hoje = () => new Date().toISOString().split('T')[0];
-const fmtData = d => {
-  if (!d) return '';
-  const s = String(d).includes('T') ? String(d).split('T')[0] : String(d);
-  const parts = s.split('-');
-  if (parts.length !== 3) return d;
-  return parts[2] + '/' + parts[1] + '/' + parts[0];
-};
-const diasAtraso = d => {
-  const s = String(d).includes('T') ? String(d).split('T')[0] : String(d);
-  return Math.floor((new Date() - new Date(s + 'T12:00:00')) / 86400000);
-};
-const dataDevolucao = dataSaida => {
-  const s = String(dataSaida).includes('T') ? String(dataSaida).split('T')[0] : String(dataSaida);
-  const d = new Date(s + 'T12:00:00');
-  d.setDate(d.getDate() + 7);
-  return fmtData(d.toISOString().split('T')[0]);
-};
+const fmtData = d => { if (!d) return ''; const s = String(d).includes('T') ? String(d).split('T')[0] : String(d); const p = s.split('-'); return p.length !== 3 ? d : p[2]+'/'+p[1]+'/'+p[0]; };
+const diasAtraso = d => { const s = String(d).includes('T') ? String(d).split('T')[0] : String(d); return Math.floor((new Date() - new Date(s+'T12:00:00')) / 86400000); };
+const dataDevolucao = ds => { const s = String(ds).includes('T') ? String(ds).split('T')[0] : String(ds); const d = new Date(s+'T12:00:00'); d.setDate(d.getDate()+7); return fmtData(d.toISOString().split('T')[0]); };
 const $ = id => document.getElementById(id);
-
-function eDevolvida(r) {
-  const v = r.devolvida;
-  return v === true || v === 'TRUE' || v === 'true' || v === 1 || v === '1';
-}
+const eDevolvida = r => { const v = r.devolvida; return v===true||v==='TRUE'||v==='true'||v===1||v==='1'; };
 
 function showToast(msg) {
-  const t = $('toast');
-  t.textContent = msg;
-  t.style.display = 'block';
+  const t = $('toast'); t.textContent = msg; t.style.display = 'block';
   t.style.animation = 'none';
   setTimeout(() => t.style.animation = 'fadeInUp .2s ease', 10);
   setTimeout(() => { t.style.display = 'none'; }, 3500);
 }
 
 async function api(action, data = {}) {
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    body: JSON.stringify({ action, ...data }),
-    headers: { 'Content-Type': 'text/plain' }
-  });
+  const res = await fetch(API_URL, { method:'POST', body:JSON.stringify({action,...data}), headers:{'Content-Type':'text/plain'} });
   return res.json();
 }
 
 const NANINHAS_PADRAO = [
-  { id: 'sao-francisco',    nome: 'São Francisco',           emoji: '🕊️', oracao: 'São Francisco de Assis, que amaste a Deus em todas as criaturas, ensinai-nos a ver o amor do Senhor nas pequenas coisas. Amém.' },
-  { id: 'nsa-aparecida',    nome: 'Nossa Senhora Aparecida', emoji: '🌟', oracao: 'Nossa Senhora Aparecida, padroeira do Brasil, cobri esta família com o seu manto sagrado e intercedei por nós junto ao Senhor. Amém.' },
-  { id: 'carlo-acutis',     nome: 'Carlo Acutis',            emoji: '💻', oracao: 'Beato Carlo Acutis, jovem que amou a Eucaristia, inspirai as crianças a buscar a Deus com alegria e simplicidade. Amém.' },
-  { id: 'jesus',            nome: 'Jesus',                   emoji: '✝️', oracao: 'Senhor Jesus, que chamaste as crianças, estai perto desta família e enchei este lar da vossa paz. Amém.' },
-  { id: 'padre-pio',        nome: 'São Padre Pio',           emoji: '🙏', oracao: 'São Padre Pio, rogai por esta família e pedi a Deus que a proteja e guie sempre. Amém.' },
-  { id: 'joao-evangelista', nome: 'São João Evangelista',    emoji: '📖', oracao: 'São João Evangelista, ensinai esta criança a conhecer e amar a Palavra de Deus. Amém.' },
-  { id: 'dado-oracao',      nome: 'Dado de Oração',          emoji: '🎲', oracao: 'O dado de oração ajuda a família a rezar junta. Role o dado e reze a oração do número que sair! 🙏' },
+  {id:'sao-francisco',nome:'São Francisco',emoji:'🕊️',oracao:'São Francisco de Assis, que amaste a Deus em todas as criaturas, ensinai-nos a ver o amor do Senhor nas pequenas coisas. Amém.'},
+  {id:'nsa-aparecida',nome:'Nossa Senhora Aparecida',emoji:'🌟',oracao:'Nossa Senhora Aparecida, padroeira do Brasil, cobri esta família com o seu manto sagrado e intercedei por nós junto ao Senhor. Amém.'},
+  {id:'carlo-acutis',nome:'Carlo Acutis',emoji:'💻',oracao:'Beato Carlo Acutis, jovem que amou a Eucaristia, inspirai as crianças a buscar a Deus com alegria e simplicidade. Amém.'},
+  {id:'jesus',nome:'Jesus',emoji:'✝️',oracao:'Senhor Jesus, que chamaste as crianças, estai perto desta família e enchei este lar da vossa paz. Amém.'},
+  {id:'padre-pio',nome:'São Padre Pio',emoji:'🙏',oracao:'São Padre Pio, rogai por esta família e pedi a Deus que a proteja e guie sempre. Amém.'},
+  {id:'joao-evangelista',nome:'São João Evangelista',emoji:'📖',oracao:'São João Evangelista, ensinai esta criança a conhecer e amar a Palavra de Deus. Amém.'},
+  {id:'dado-oracao',nome:'Dado de Oração',emoji:'🎲',oracao:'O dado de oração ajuda a família a rezar junta. Role o dado e reze a oração do número que sair! 🙏'},
 ];
 
 async function carregarDados() {
-  if (!API_URL || API_URL.includes('COLE_AQUI')) {
-    naninhas = NANINHAS_PADRAO;
-    registros = [];
-    trocarAba('registrar');
-    return;
-  }
+  if (!API_URL || API_URL.includes('COLE_AQUI')) { naninhas = NANINHAS_PADRAO; registros = []; trocarAba('registrar'); return; }
   try {
-    const [nn, rr] = await Promise.all([api('getNaninhas'), api('getRegistros')]);
-    naninhas = (nn && nn.length) ? nn : NANINHAS_PADRAO;
+    const [nn,rr] = await Promise.all([api('getNaninhas'), api('getRegistros')]);
+    naninhas = (nn&&nn.length) ? nn : NANINHAS_PADRAO;
     registros = rr || [];
-  } catch (e) {
-    naninhas = NANINHAS_PADRAO;
-    registros = [];
-    showToast('⚠️ Erro ao conectar. Verifique a URL do Apps Script.');
-  }
+  } catch(e) { naninhas = NANINHAS_PADRAO; registros = []; showToast('⚠️ Erro ao conectar. Verifique a URL do Apps Script.'); }
   trocarAba('registrar');
 }
 
-function status(r) {
-  if (eDevolvida(r)) return 'devolvida';
-  if (diasAtraso(r.dataSaida) > 7) return 'atrasada';
-  return 'emprestada';
-}
+const status = r => eDevolvida(r) ? 'devolvida' : diasAtraso(r.dataSaida) > 7 ? 'atrasada' : 'emprestada';
 
 function renderStats() {
   $('stat-fora').textContent = registros.filter(r => !eDevolvida(r)).length;
-  $('stat-atr').textContent  = registros.filter(r => !eDevolvida(r) && diasAtraso(r.dataSaida) > 7).length;
+  $('stat-atr').textContent  = registros.filter(r => !eDevolvida(r) && diasAtraso(r.dataSaida)>7).length;
   $('stat-dev').textContent  = registros.filter(r => eDevolvida(r)).length;
 }
 
 function trocarAba(aba) {
-  abaAtual = aba;
-  buscaAtual = '';
-  filtroAtual = 'todos';
+  abaAtual = aba; buscaAtual = ''; filtroAtual = 'todos';
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.aba === aba));
   renderStats();
-  if (aba === 'registrar')  renderRegistrar();
-  else if (aba === 'devolver')  renderDevolver();
-  else if (aba === 'historico') renderHistorico();
-  else if (aba === 'naninhas')  renderNaninhas();
+  if (aba==='registrar') renderRegistrar();
+  else if (aba==='devolver') renderDevolver();
+  else if (aba==='historico') renderHistorico();
+  else if (aba==='naninhas') renderNaninhas();
 }
 
-// ══ REGISTRAR ══════════════════════════════════════════
 function renderRegistrar() {
   $('conteudo').innerHTML = `
     <h2 class="section-title">Registrar novo empréstimo</h2>
     <div class="field"><label class="label">Nome da criança *</label><input type="text" id="r-crianca" placeholder="Ex: Maria Clara"></div>
     <div class="field"><label class="label">Responsável</label><input type="text" id="r-resp" placeholder="Nome do pai / mãe / responsável"></div>
     <div class="field"><label class="label">Telefone (WhatsApp) *</label><input type="tel" id="r-tel" placeholder="Ex: 11 99999-9999"></div>
-    <div class="field">
-      <label class="label">Escolha a naninha *</label>
-      <div class="nn-grid" id="reg-nn-grid"></div>
-    </div>
-    <div class="oracao-box" id="oracao-box">
-      <div class="oracao-label">Oração que será enviada</div>
-      <div class="oracao-text" id="oracao-preview"></div>
-    </div>
+    <div class="field"><label class="label">Escolha a naninha *</label><div class="nn-grid" id="reg-nn-grid"></div></div>
+    <div class="oracao-box" id="oracao-box"><div class="oracao-label">Oração que será enviada</div><div class="oracao-text" id="oracao-preview"></div></div>
     <div class="field" style="margin-top:14px"><label class="label">Data de saída</label><input type="date" id="r-data" value="${hoje()}"></div>
     <div class="check-row"><input type="checkbox" id="r-dado"><label for="r-dado">🎲 Dado de oração saiu junto</label></div>
-    <button class="btn btn-primary" onclick="registrar()">✅ Registrar saída e gerar mensagem WhatsApp</button>
-  `;
-  const grid = $('reg-nn-grid');
-  grid.innerHTML = naninhas.map(n => `
-    <div class="nn-card ${formSelecionada === n.id ? 'selected' : ''}" onclick="selecionarNaninha('${n.id}')">
-      <div class="nn-emoji">${n.emoji}</div>
-      <div class="nn-nome">${n.nome}</div>
-    </div>`).join('');
+    <button class="btn btn-primary" onclick="registrar()">✅ Registrar saída e gerar mensagem WhatsApp</button>`;
+  $('reg-nn-grid').innerHTML = naninhas.map(n =>
+    '<div class="nn-card'+(formSelecionada===n.id?' selected':'')+'" onclick="selecionarNaninha(\''+n.id+'\')">'
+    +'<div class="nn-emoji">'+n.emoji+'</div><div class="nn-nome">'+n.nome+'</div></div>').join('');
 }
 
 function selecionarNaninha(id) {
   formSelecionada = id;
-  const nn = naninhas.find(n => n.id === id);
+  const nn = naninhas.find(n => n.id===id);
   $('oracao-preview').textContent = nn ? nn.oracao : '';
   $('oracao-box').classList.toggle('show', !!nn);
-  const grid = $('reg-nn-grid');
-  if (grid) grid.innerHTML = naninhas.map(n => `
-    <div class="nn-card ${formSelecionada === n.id ? 'selected' : ''}" onclick="selecionarNaninha('${n.id}')">
-      <div class="nn-emoji">${n.emoji}</div>
-      <div class="nn-nome">${n.nome}</div>
-    </div>`).join('');
+  const g = $('reg-nn-grid');
+  if (g) g.innerHTML = naninhas.map(n =>
+    '<div class="nn-card'+(formSelecionada===n.id?' selected':'')+'" onclick="selecionarNaninha(\''+n.id+'\')">'
+    +'<div class="nn-emoji">'+n.emoji+'</div><div class="nn-nome">'+n.nome+'</div></div>').join('');
 }
 
 async function registrar() {
-  const crianca    = $('r-crianca').value.trim();
-  const responsavel= $('r-resp').value.trim();
-  const telefone   = $('r-tel').value.trim();
-  const dataSaida  = $('r-data').value;
-  const dadoOracao = $('r-dado').checked;
-  if (!crianca || !telefone || !formSelecionada) { showToast('⚠️ Preencha criança, telefone e escolha a naninha!'); return; }
-  const nn = naninhas.find(n => n.id === formSelecionada);
-  const reg = { id: 'reg-' + Date.now(), crianca, responsavel, telefone, naninaId: nn.id, naniaNome: nn.nome, naniaEmoji: nn.emoji, oracao: nn.oracao, dataSaida, dadoOracao, devolvida: false, dataEntrada: '' };
+  const crianca=$('r-crianca').value.trim(), responsavel=$('r-resp').value.trim();
+  const telefone=$('r-tel').value.trim(), dataSaida=$('r-data').value, dadoOracao=$('r-dado').checked;
+  if (!crianca||!telefone||!formSelecionada){showToast('⚠️ Preencha criança, telefone e escolha a naninha!');return;}
+  const nn=naninhas.find(n=>n.id===formSelecionada);
+  const reg={id:'reg-'+Date.now(),crianca,responsavel,telefone,naninaId:nn.id,naniaNome:nn.nome,naniaEmoji:nn.emoji,oracao:nn.oracao,dataSaida,dadoOracao,devolvida:false,dataEntrada:''};
   showToast('⏳ Salvando...');
-  if (API_URL && !API_URL.includes('COLE_AQUI')) await api('addRegistro', { data: reg });
+  if (API_URL&&!API_URL.includes('COLE_AQUI')) await api('addRegistro',{data:reg});
   registros.unshift(reg);
-  const msg = `Olá! 😊 A ${crianca} levou hoje a naninha de *${nn.nome}* para casa!\n\n_Oração desta semana:_\n${nn.oracao}\n\nA data de devolução é *${dataDevolucao(dataSaida)}* (próximo domingo). Qualquer dúvida, estamos à disposição! 🙏`;
-  abrirModalWA(telefone, msg);
-  formSelecionada = null;
-  renderStats();
-  showToast('✅ Entrega registrada!');
+  const msg='Olá! 😊 A '+crianca+' levou hoje a naninha de *'+nn.nome+'* para casa!\n\n_Oração desta semana:_\n'+nn.oracao+'\n\nA data de devolução é *'+dataDevolucao(dataSaida)+'* (próximo domingo). Qualquer dúvida, estamos à disposição! 🙏';
+  abrirModalWA(telefone,msg);
+  formSelecionada=null; renderStats(); showToast('✅ Entrega registrada!');
 }
 
-// ══ DEVOLVER ═══════════════════════════════════════════
 function renderDevolver() {
-  devJaPesquisou = false;
-  devResultados = [];
-  devBuscaNome = '';
-  devBuscaTel = '';
-  $('conteudo').innerHTML = `
-    <h2 class="section-title">Registrar devolução</h2>
-    <p class="section-sub">${registros.filter(r => !eDevolvida(r)).length} naninha${registros.filter(r => !eDevolvida(r)).length !== 1 ? 's' : ''} ainda fora da paróquia</p>
-    <div class="field">
-      <label class="label">Nome da criança</label>
-      <input type="text" id="dev-nome" placeholder="Ex: Maria Clara"
-        onkeydown="if(event.key==='Enter')pesquisarDevolucao()">
-    </div>
-    <div class="field">
-      <label class="label">4 últimos dígitos do telefone</label>
-      <input type="tel" id="dev-tel" placeholder="Ex: 9988" maxlength="4"
-        oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,4)"
-        onkeydown="if(event.key==='Enter')pesquisarDevolucao()">
-    </div>
-    <button class="btn btn-primary" id="btn-pesquisar" style="margin-bottom:20px" onclick="pesquisarDevolucao()">🔍 Pesquisar</button>
-    <div id="dev-resultados"></div>
-  `;
+  devJaPesquisou=false; devResultados=[]; devBuscaNome=''; devBuscaTel='';
+  const nPend=registros.filter(r=>!eDevolvida(r)).length;
+  $('conteudo').innerHTML=
+    '<h2 class="section-title">Registrar devolução</h2>'
+   +'<p class="section-sub">'+nPend+' naninha'+(nPend!==1?'s':'')+' ainda fora da paróquia</p>'
+   +'<div class="field"><label class="label">Nome da criança</label>'
+   +'<input type="text" id="dev-nome" placeholder="Ex: Maria Clara" onkeydown="if(event.key===\'Enter\')pesquisarDevolucao()"></div>'
+   +'<div class="field"><label class="label">4 últimos dígitos do telefone</label>'
+   +'<input type="tel" id="dev-tel" placeholder="Ex: 9988" maxlength="4" '
+   +'oninput="this.value=this.value.replace(/[^0-9]/g,\'\').slice(0,4)" onkeydown="if(event.key===\'Enter\')pesquisarDevolucao()"></div>'
+   +'<button class="btn btn-primary" id="btn-pesquisar" style="margin-bottom:20px" onclick="pesquisarDevolucao()">🔍 Pesquisar</button>'
+   +'<div id="dev-resultados"></div>';
 }
 
 function pesquisarDevolucao() {
-  const nomeCampo = $('dev-nome');
-  const telCampo  = $('dev-tel');
-  if (!nomeCampo || !telCampo) return;
-
-  devBuscaNome = nomeCampo.value.trim().toLowerCase();
-  devBuscaTel  = telCampo.value.trim();
-
-  if (!devBuscaNome && !devBuscaTel) {
-    showToast('⚠️ Preencha ao menos um campo para pesquisar.');
-    return;
-  }
-
-  const btn = $('btn-pesquisar');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Pesquisando...'; }
-
-  setTimeout(function() {
-    const pendentes = registros.filter(r => !eDevolvida(r));
-
-    devResultados = pendentes.filter(function(r) {
-      var nomeOk = true;
-      var telOk  = true;
-      if (devBuscaNome) nomeOk = r.crianca.toLowerCase().indexOf(devBuscaNome) >= 0;
-      if (devBuscaTel)  telOk  = String(r.telefone || '').replace(/[^0-9]/g, '').slice(-4) === devBuscaTel;
-      return nomeOk && telOk;
+  const nc=$('dev-nome'), tc=$('dev-tel');
+  if (!nc||!tc) return;
+  devBuscaNome=nc.value.trim().toLowerCase(); devBuscaTel=tc.value.trim();
+  if (!devBuscaNome&&!devBuscaTel){showToast('⚠️ Preencha ao menos um campo para pesquisar.');return;}
+  const btn=$('btn-pesquisar');
+  if (btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Pesquisando...';}
+  setTimeout(function(){
+    const pendentes=registros.filter(r=>!eDevolvida(r));
+    devResultados=pendentes.filter(function(r){
+      var nOk=!devBuscaNome||r.crianca.toLowerCase().indexOf(devBuscaNome)>=0;
+      var tOk=!devBuscaTel||String(r.telefone||'').replace(/[^0-9]/g,'').slice(-4)===devBuscaTel;
+      return nOk&&tOk;
     });
-
-    devJaPesquisou = true;
-
-    if (btn) { btn.disabled = false; btn.innerHTML = '🔍 Pesquisar'; }
-
-    var el = $('dev-resultados');
+    devJaPesquisou=true;
+    if (btn){btn.disabled=false;btn.innerHTML='🔍 Pesquisar';}
+    var el=$('dev-resultados');
     if (!el) return;
-
-    if (devResultados.length === 0) {
-      el.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><p>Não encontramos naninhas para registrar devolução.</p></div>';
+    if (devResultados.length===0){
+      el.innerHTML='<div class="empty"><div class="empty-icon">🔍</div><p>Não encontramos naninhas para registrar devolução.</p></div>';
       return;
     }
-
-    el.innerHTML = devResultados.map(function(r) {
-      var dias = diasAtraso(r.dataSaida);
-      var atr  = dias > 7;
-      var dadoHtml = (r.dadoOracao === true || r.dadoOracao === 'TRUE' || r.dadoOracao === 'true')
-        ? '<div class="card-dado">🎲 Saiu com dado de oração</div>' : '';
-      var diasHtml = dias === 0 ? 'Saiu hoje' : dias + ' dia' + (dias > 1 ? 's' : '') + ' fora';
-      return '<div class="card' + (atr ? ' atrasada' : '') + '">'
-        + '<div class="card-top">'
-        + '<div class="card-emoji">' + r.naniaEmoji + '</div>'
-        + '<div class="card-info">'
-        + '<div class="card-nome">' + r.crianca + '</div>'
-        + '<div class="card-meta">' + r.naniaNome + ' · ' + (r.responsavel || '—') + '</div>'
-        + '<div class="card-meta">Saiu: ' + fmtData(r.dataSaida) + ' · Devolver: ' + dataDevolucao(r.dataSaida) + '</div>'
-        + dadoHtml
-        + '<div class="card-dias ' + (atr ? 'late' : 'ok') + '">' + diasHtml + (atr ? ' · ATRASADA' : '') + '</div>'
-        + '</div>'
-        + '<button class="btn btn-sm btn-verde" onclick="abrirDevolucao(\'' + r.id + '\')">↩️ Registrar devolução</button>'
-        + '</div></div>';
+    el.innerHTML=devResultados.map(function(r){
+      var dias=diasAtraso(r.dataSaida),atr=dias>7;
+      var dado=(r.dadoOracao===true||r.dadoOracao==='TRUE'||r.dadoOracao==='true')?'<div class="card-dado">🎲 Saiu com dado de oração</div>':'';
+      var diasTxt=dias===0?'Saiu hoje':dias+' dia'+(dias>1?'s':'')+' fora';
+      return '<div class="card'+(atr?' atrasada':'')+'"><div class="card-top">'
+        +'<div class="card-emoji">'+r.naniaEmoji+'</div>'
+        +'<div class="card-info">'
+        +'<div class="card-nome">'+r.crianca+'</div>'
+        +'<div class="card-meta">'+r.naniaNome+' · '+(r.responsavel||'—')+'</div>'
+        +'<div class="card-meta">Saiu: '+fmtData(r.dataSaida)+' · Devolver: '+dataDevolucao(r.dataSaida)+'</div>'
+        +dado+'<div class="card-dias '+(atr?'late':'ok')+'">'+diasTxt+(atr?' · ATRASADA':'')+'</div>'
+        +'</div><button class="btn btn-sm btn-verde" onclick="abrirDevolucao(\''+r.id+'\')">↩️ Registrar devolução</button>'
+        +'</div></div>';
     }).join('');
-  }, 600);
+  },600);
 }
 
-// ══ HISTÓRICO ══════════════════════════════════════════
 function renderHistorico() {
-  const filtrados = registros.filter(r => {
-    if (filtroAtual === 'devolvida' && !eDevolvida(r)) return false;
-    if (filtroAtual === 'emprestada' && (eDevolvida(r) || diasAtraso(r.dataSaida) > 7)) return false;
-    if (filtroAtual === 'atrasada' && (eDevolvida(r) || diasAtraso(r.dataSaida) <= 7)) return false;
-    if (buscaAtual) {
-      const b = buscaAtual.toLowerCase();
-      if (!r.crianca.toLowerCase().includes(b) && !(r.naniaNome||'').toLowerCase().includes(b) && !(r.responsavel||'').toLowerCase().includes(b)) return false;
-    }
+  const filtrados=registros.filter(r=>{
+    if (filtroAtual==='devolvida'&&!eDevolvida(r)) return false;
+    if (filtroAtual==='emprestada'&&(eDevolvida(r)||diasAtraso(r.dataSaida)>7)) return false;
+    if (filtroAtual==='atrasada'&&(eDevolvida(r)||diasAtraso(r.dataSaida)<=7)) return false;
+    if (buscaAtual){const b=buscaAtual.toLowerCase();if(!r.crianca.toLowerCase().includes(b)&&!(r.naniaNome||'').toLowerCase().includes(b)&&!(r.responsavel||'').toLowerCase().includes(b))return false;}
     return true;
   });
-  $('conteudo').innerHTML = `
+  $('conteudo').innerHTML=`
     <h2 class="section-title">Histórico de empréstimos</h2>
     <div class="filtros">
-      ${[['todos','Todos'],['emprestada','📤 Fora'],['atrasada','⚠️ Atrasadas'],['devolvida','✅ Devolvidas']].map(([v,l]) =>
-        `<button class="filtro ${filtroAtual===v?'active':''}" onclick="filtroAtual='${v}';renderHistorico()">${l}</button>`
-      ).join('')}
+      ${[['todos','Todos'],['emprestada','📤 Fora'],['atrasada','⚠️ Atrasadas'],['devolvida','✅ Devolvidas']].map(([v,l])=>
+        '<button class="filtro '+(filtroAtual===v?'active':'')+'" onclick="filtroAtual=\''+v+'\';renderHistorico()">'+l+'</button>').join('')}
     </div>
     <input class="busca" placeholder="🔍 Buscar por criança, santo ou responsável..." value="${buscaAtual}" oninput="buscaAtual=this.value;renderHistorico()">
-    ${filtrados.length === 0
-      ? '<div class="empty"><div class="empty-icon">📋</div><p>Nenhum registro encontrado.</p></div>'
-      : filtrados.map(r => {
-          const st = status(r);
-          const badge = st==='devolvida'
-            ? '<span class="badge badge-dev">✅ Devolvida</span>'
-            : st==='atrasada'
-            ? '<span class="badge badge-atr">⚠️ Atrasada</span>'
-            : '<span class="badge badge-emp">📤 Emprestada</span>';
-          const dado = (r.dadoOracao===true||r.dadoOracao==='TRUE'||r.dadoOracao==='true') ? '<div class="card-dado">🎲 Com dado de oração</div>' : '';
-          const acoes = !eDevolvida(r) ? `<div class="card-actions">
-            <button class="btn btn-sm btn-wa" onclick="abrirWALembrete('${r.id}','lembrete')">📲 Lembrete</button>
-            ${st==='atrasada'?`<button class="btn btn-sm btn-vermelho" onclick="abrirWALembrete('${r.id}','cobranca')">🔔 Cobrança</button>`:''}
-            <button class="btn btn-sm btn-verde" onclick="abrirDevolucao('${r.id}')">↩️ Devolvida</button>
-          </div>` : '';
-          return `<div class="card ${st==='atrasada'?'atrasada':''}">
-            <div class="card-top">
-              <div class="card-emoji">${r.naniaEmoji}</div>
-              <div class="card-info">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
-                  <div>
-                    <div class="card-nome">${r.crianca}</div>
-                    <div class="card-meta">${r.naniaNome} · ${r.responsavel||'—'} · ${r.telefone}</div>
-                    <div class="card-meta">Saiu: ${fmtData(r.dataSaida)}${eDevolvida(r)&&r.dataEntrada?' · Voltou: '+fmtData(r.dataEntrada):' · Devolver: '+dataDevolucao(r.dataSaida)}</div>
-                    ${dado}
-                  </div>${badge}
-                </div>${acoes}
-              </div>
-            </div>
-          </div>`;
-        }).join('')}
-  `;
+    ${filtrados.length===0
+      ?'<div class="empty"><div class="empty-icon">📋</div><p>Nenhum registro encontrado.</p></div>'
+      :filtrados.map(r=>{
+        const st=status(r);
+        const badge=st==='devolvida'?'<span class="badge badge-dev">✅ Devolvida</span>':st==='atrasada'?'<span class="badge badge-atr">⚠️ Atrasada</span>':'<span class="badge badge-emp">📤 Emprestada</span>';
+        const dado=(r.dadoOracao===true||r.dadoOracao==='TRUE'||r.dadoOracao==='true')?'<div class="card-dado">🎲 Com dado de oração</div>':'';
+        const acoes=!eDevolvida(r)?'<div class="card-actions"><button class="btn btn-sm btn-wa" onclick="abrirWALembrete(\''+r.id+'\',\'lembrete\')">📲 Lembrete</button>'+(st==='atrasada'?'<button class="btn btn-sm btn-vermelho" onclick="abrirWALembrete(\''+r.id+'\',\'cobranca\')">🔔 Cobrança</button>':'')+'<button class="btn btn-sm btn-verde" onclick="abrirDevolucao(\''+r.id+'\')">↩️ Devolvida</button></div>':'';
+        return '<div class="card '+(st==='atrasada'?'atrasada':'')+'"><div class="card-top"><div class="card-emoji">'+r.naniaEmoji+'</div><div class="card-info"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap"><div><div class="card-nome">'+r.crianca+'</div><div class="card-meta">'+r.naniaNome+' · '+(r.responsavel||'—')+' · '+r.telefone+'</div><div class="card-meta">Saiu: '+fmtData(r.dataSaida)+(eDevolvida(r)&&r.dataEntrada?' · Voltou: '+fmtData(r.dataEntrada):' · Devolver: '+dataDevolucao(r.dataSaida))+'</div>'+dado+'</div>'+badge+'</div>'+acoes+'</div></div></div>';
+      }).join('')}`;
 }
 
-// ══ NANINHAS ═══════════════════════════════════════════
 function renderNaninhas() {
-  $('conteudo').innerHTML = `
-    <div class="nn-top-row">
-      <h2 class="section-title" style="margin:0">Naninhas cadastradas</h2>
-      <button class="btn btn-dourado btn-sm" onclick="abrirModalNaninha()">+ Nova naninha</button>
-    </div>
-    ${naninhas.map(n => `
-      <div class="nn-list-item">
-        <div class="nn-list-emoji">${n.emoji}</div>
-        <div class="nn-list-info">
-          <div class="nn-list-nome">${n.nome}</div>
-          <div class="nn-list-oracao">${n.oracao||'Sem oração cadastrada.'}</div>
-        </div>
-      </div>`).join('')}
-  `;
+  $('conteudo').innerHTML='<div class="nn-top-row"><h2 class="section-title" style="margin:0">Naninhas cadastradas</h2><button class="btn btn-dourado btn-sm" onclick="abrirModalNaninha()">+ Nova naninha</button></div>'
+    +naninhas.map(n=>'<div class="nn-list-item"><div class="nn-list-emoji">'+n.emoji+'</div><div class="nn-list-info"><div class="nn-list-nome">'+n.nome+'</div><div class="nn-list-oracao">'+(n.oracao||'Sem oração cadastrada.')+'</div></div></div>').join('');
 }
 
-// ══ MODAIS ═════════════════════════════════════════════
-function abrirModalWA(telefone, msg) {
-  $('wa-textarea').value = msg;
-  $('wa-tel').value = telefone;
-  $('modal-wa').classList.add('open');
-}
-function fecharWA() { $('modal-wa').classList.remove('open'); }
-function enviarWA() {
-  const tel = $('wa-tel').value.replace(/[^0-9]/g,'');
-  window.open('https://wa.me/55' + tel + '?text=' + encodeURIComponent($('wa-textarea').value), '_blank');
-  fecharWA();
+function abrirModalWA(tel,msg){$('wa-textarea').value=msg;$('wa-tel').value=tel;$('modal-wa').classList.add('open');}
+function fecharWA(){$('modal-wa').classList.remove('open');}
+function enviarWA(){window.open('https://wa.me/55'+$('wa-tel').value.replace(/[^0-9]/g,'')+'?text='+encodeURIComponent($('wa-textarea').value),'_blank');fecharWA();}
+
+function abrirWALembrete(id,tipo){
+  const r=registros.find(x=>x.id===id),nn=naninhas.find(n=>n.id===r.naninaId),dv=dataDevolucao(r.dataSaida);
+  const msg=tipo==='lembrete'
+    ?'Olá! 😊 Só passando pra lembrar que a '+r.crianca+' ainda está com a naninha de *'+(nn?nn.nome:r.naniaNome)+'*.\n\nA data de devolução é *'+dv+'*. Por favor, lembre de trazer no próximo domingo. Obrigada! 🙏'
+    :'Olá! 🙏 A naninha de *'+(nn?nn.nome:r.naniaNome)+'* da '+r.crianca+' já está há '+diasAtraso(r.dataSaida)+' dias com vocês. A data de devolução era *'+dv+'*.\n\nPor favor, lembre de trazer no próximo domingo. Contamos com a colaboração de vocês! 💛';
+  abrirModalWA(r.telefone,msg);
 }
 
-function abrirWALembrete(id, tipo) {
-  const r  = registros.find(x => x.id === id);
-  const nn = naninhas.find(n => n.id === r.naninaId);
-  const dataDevol = dataDevolucao(r.dataSaida);
-  const msg = tipo === 'lembrete'
-    ? 'Olá! 😊 Só passando pra lembrar que a ' + r.crianca + ' ainda está com a naninha de *' + (nn?nn.nome:r.naniaNome) + '*.\n\nA data de devolução é *' + dataDevol + '*. Por favor, lembre de trazer no próximo domingo. Obrigada! 🙏'
-    : 'Olá! 🙏 A naninha de *' + (nn?nn.nome:r.naniaNome) + '* da ' + r.crianca + ' já está há ' + diasAtraso(r.dataSaida) + ' dias com vocês. A data de devolução era *' + dataDevol + '*.\n\nPor favor, lembre de trazer no próximo domingo. Contamos com a colaboração de vocês! 💛';
-  abrirModalWA(r.telefone, msg);
-}
-
-function abrirDevolucao(id) {
-  modalDevReg = registros.find(r => r.id === id);
-  const nn = naninhas.find(n => n.id === (modalDevReg ? modalDevReg.naninaId : ''));
-  $('dev-texto').innerHTML = 'Confirmar devolução da naninha de <strong>' + (nn?nn.nome:modalDevReg.naniaNome) + '</strong> pela criança <strong>' + modalDevReg.crianca + '</strong>?';
-  const dado = modalDevReg.dadoOracao === true || modalDevReg.dadoOracao === 'TRUE' || modalDevReg.dadoOracao === 'true';
-  $('dev-dado').style.display = dado ? 'block' : 'none';
+function abrirDevolucao(id){
+  modalDevReg=registros.find(r=>r.id===id);
+  const nn=naninhas.find(n=>n.id===(modalDevReg?modalDevReg.naninaId:''));
+  $('dev-texto').innerHTML='Confirmar devolução da naninha de <strong>'+(nn?nn.nome:modalDevReg.naniaNome)+'</strong> pela criança <strong>'+modalDevReg.crianca+'</strong>?';
+  $('dev-dado').style.display=(modalDevReg.dadoOracao===true||modalDevReg.dadoOracao==='TRUE'||modalDevReg.dadoOracao==='true')?'block':'none';
   $('modal-dev').classList.add('open');
 }
-function fecharDev() { $('modal-dev').classList.remove('open'); modalDevReg = null; }
-async function confirmarDevolucao() {
+function fecharDev(){$('modal-dev').classList.remove('open');modalDevReg=null;}
+async function confirmarDevolucao(){
   if (!modalDevReg) return;
-  const dataEntrada = hoje();
-  showToast('⏳ Salvando...');
-  if (API_URL && !API_URL.includes('COLE_AQUI')) await api('devolverNaninha', { id: modalDevReg.id, dataEntrada });
-  registros = registros.map(r => r.id === modalDevReg.id ? Object.assign({}, r, { devolvida: true, dataEntrada }) : r);
-  fecharDev();
-  renderStats();
-  // se estiver na aba devolver, reseta a busca
-  if (abaAtual === 'devolver') renderDevolver();
-  else if (abaAtual === 'historico') renderHistorico();
+  const dataEntrada=hoje(); showToast('⏳ Salvando...');
+  if (API_URL&&!API_URL.includes('COLE_AQUI')) await api('devolverNaninha',{id:modalDevReg.id,dataEntrada});
+  registros=registros.map(r=>r.id===modalDevReg.id?Object.assign({},r,{devolvida:true,dataEntrada}):r);
+  fecharDev(); renderStats();
+  if (abaAtual==='devolver') renderDevolver();
+  else if (abaAtual==='historico') renderHistorico();
   showToast('✅ Devolução registrada!');
 }
 
-function abrirModalNaninha() { $('modal-nn').classList.add('open'); }
-function fecharNN() {
+function abrirModalNaninha(){$('modal-nn').classList.add('open');}
+function fecharNN(){
   $('modal-nn').classList.remove('open');
-  $('nn-nome').value=''; $('nn-emoji').value='🙏'; $('nn-oracao').value='';
+  $('nn-nome').value=''; $('nn-oracao').value='';
+  var b=$('nn-emoji-btn'); if(b) b.textContent='🙏';
 }
-async function salvarNaninha() {
-  const nome  = $('nn-nome').value.trim();
-  const emoji = $('nn-emoji').value.trim() || '🙏';
-  const oracao= $('nn-oracao').value.trim();
-  if (!nome) { showToast('⚠️ Informe o nome do santo.'); return; }
-  const nova = { id: 'nn-' + Date.now(), nome, emoji, oracao };
+function abrirEmojiPicker(){
+  var tmp=document.createElement('input');
+  tmp.type='text';
+  tmp.style.cssText='position:fixed;bottom:0;left:0;width:1px;height:1px;opacity:0;font-size:16px;';
+  document.body.appendChild(tmp);
+  tmp.focus();
+  tmp.addEventListener('input',function(){
+    var val=tmp.value.trim();
+    if(val){var btn=$('nn-emoji-btn');if(btn)btn.textContent=val;document.body.removeChild(tmp);}
+  });
+  try{tmp.dispatchEvent(new KeyboardEvent('keydown',{key:'.',metaKey:true,ctrlKey:true,bubbles:true}));}catch(e){}
+}
+async function salvarNaninha(){
+  const nome=$('nn-nome').value.trim();
+  const emojiBtn=$('nn-emoji-btn');
+  const emoji=(emojiBtn?emojiBtn.textContent.trim():'')||'🙏';
+  const oracao=$('nn-oracao').value.trim();
+  if (!nome){showToast('⚠️ Informe o nome do santo.');return;}
+  const nova={id:'nn-'+Date.now(),nome,emoji,oracao};
   showToast('⏳ Salvando...');
-  if (API_URL && !API_URL.includes('COLE_AQUI')) await api('addNaninha', { data: nova });
-  naninhas.push(nova);
-  fecharNN();
-  renderNaninhas();
-  showToast('✅ Naninha cadastrada!');
+  if (API_URL&&!API_URL.includes('COLE_AQUI')) await api('addNaninha',{data:nova});
+  naninhas.push(nova); fecharNN(); renderNaninhas(); showToast('✅ Naninha cadastrada!');
 }
 
-window.onload = function() { carregarDados(); };
+window.onload=function(){carregarDados();};
 </script>
 
-<header>
-  <div class="icon">🕊️</div>
-  <div>
-    <h1>Naninhas Sagradas</h1>
-    <p>Evangelização Infantil · Controle de Empréstimo</p>
-  </div>
-</header>
-
+<header><div class="icon">🕊️</div><div><h1>Naninhas Sagradas</h1><p>Evangelização Infantil · Controle de Empréstimo</p></div></header>
 <div class="stats">
   <div class="stat stat-fora"><span class="stat-num" id="stat-fora">—</span> Fora da paróquia</div>
   <div class="stat stat-atraso"><span class="stat-num" id="stat-atr">—</span> Em atraso</div>
   <div class="stat stat-dev"><span class="stat-num" id="stat-dev">—</span> Devolvidas</div>
 </div>
-
 <div class="tabs">
   <button class="tab active" data-aba="registrar" onclick="trocarAba('registrar')">✏️ Registrar novo empréstimo</button>
   <button class="tab" data-aba="devolver" onclick="trocarAba('devolver')">↩️ Devolver</button>
   <button class="tab" data-aba="historico" onclick="trocarAba('historico')">📋 Histórico</button>
   <button class="tab" data-aba="naninhas" onclick="trocarAba('naninhas')">🧸 Naninhas</button>
 </div>
-
-<div class="main">
-  <div id="conteudo"><div class="loader">Carregando... 🕊️</div></div>
-</div>
+<div class="main"><div id="conteudo"><div class="loader">Carregando... 🕊️</div></div></div>
 
 <div class="overlay" id="modal-wa" onclick="if(event.target===this)fecharWA()">
-  <div class="modal">
-    <h3>📲 Enviar pelo WhatsApp</h3>
-    <p style="font-size:.82rem;color:var(--cinza);margin-bottom:8px">Edite a mensagem antes de enviar:</p>
-    <input type="hidden" id="wa-tel">
-    <textarea id="wa-textarea" rows="8"></textarea>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="fecharWA()">Cancelar</button>
-      <button class="btn btn-wa" onclick="enviarWA()">📲 Abrir WhatsApp</button>
-    </div>
-  </div>
+  <div class="modal"><h3>📲 Enviar pelo WhatsApp</h3><p style="font-size:.82rem;color:var(--cinza);margin-bottom:8px">Edite a mensagem antes de enviar:</p><input type="hidden" id="wa-tel"><textarea id="wa-textarea" rows="8"></textarea><div class="modal-footer"><button class="btn btn-ghost" onclick="fecharWA()">Cancelar</button><button class="btn btn-wa" onclick="enviarWA()">📲 Abrir WhatsApp</button></div></div>
 </div>
-
 <div class="overlay" id="modal-dev" onclick="if(event.target===this)fecharDev()">
-  <div class="modal">
-    <h3>↩️ Confirmar devolução</h3>
-    <p id="dev-texto"></p>
-    <p class="aviso-dado" id="dev-dado">🎲 Lembre de conferir se o dado de oração voltou junto!</p>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="fecharDev()">Cancelar</button>
-      <button class="btn btn-verde" onclick="confirmarDevolucao()">✅ Confirmar devolução</button>
-    </div>
-  </div>
+  <div class="modal"><h3>↩️ Confirmar devolução</h3><p id="dev-texto"></p><p class="aviso-dado" id="dev-dado">🎲 Lembre de conferir se o dado de oração voltou junto!</p><div class="modal-footer"><button class="btn btn-ghost" onclick="fecharDev()">Cancelar</button><button class="btn btn-verde" onclick="confirmarDevolucao()">✅ Confirmar devolução</button></div></div>
 </div>
-
 <div class="overlay" id="modal-nn" onclick="if(event.target===this)fecharNN()">
   <div class="modal">
     <h3>🧸 Cadastrar nova naninha</h3>
     <div class="field"><label class="label">Nome do santo *</label><input type="text" id="nn-nome" placeholder="Ex: Santa Teresinha"></div>
-    <div class="field"><label class="label">Emoji</label><input type="text" id="nn-emoji" value="🙏" style="width:80px"></div>
-    <div class="field"><label class="label">Oração</label><textarea id="nn-oracao" rows="4" placeholder="Escreva a oração que será enviada pelo WhatsApp..."></textarea></div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="fecharNN()">Cancelar</button>
-      <button class="btn btn-primary" style="width:auto;padding:10px 18px" onclick="salvarNaninha()">✅ Cadastrar</button>
+    <div class="field"><label class="label">Emoji</label>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button type="button" id="nn-emoji-btn" onclick="abrirEmojiPicker()" style="font-size:1.8rem;width:56px;height:56px;border:1.5px solid var(--creme2);border-radius:10px;background:var(--branco);cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Clique para escolher o emoji">🙏</button>
+        <span style="font-size:.78rem;color:var(--cinza)">Clique no botão para escolher</span>
+      </div>
     </div>
+    <div class="field"><label class="label">Oração</label><textarea id="nn-oracao" rows="4" placeholder="Escreva a oração que será enviada pelo WhatsApp..."></textarea></div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="fecharNN()">Cancelar</button><button class="btn btn-primary" style="width:auto;padding:10px 18px" onclick="salvarNaninha()">✅ Cadastrar</button></div>
   </div>
 </div>
-
 <div id="toast"></div>
 </body>
 </html>
