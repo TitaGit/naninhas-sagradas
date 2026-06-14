@@ -326,17 +326,27 @@ function fecharNN(){
   $('nn-nome').value=''; $('nn-oracao').value='';
   var b=$('nn-emoji-btn'); if(b) b.textContent='🙏';
 }
+var EMOJIS_SANTOS=['🕊️','🌟','💻','✝️','🙏','📖','🎲','👼','⛪','📿','🌹','✨','🕯️','💛','🌿','🏆','💎','🌸','⭐','🔔','📜','🦋','🌈','❤️','🫶'];
+
 function abrirEmojiPicker(){
-  var tmp=document.createElement('input');
-  tmp.type='text';
-  tmp.style.cssText='position:fixed;bottom:0;left:0;width:1px;height:1px;opacity:0;font-size:16px;';
-  document.body.appendChild(tmp);
-  tmp.focus();
-  tmp.addEventListener('input',function(){
-    var val=tmp.value.trim();
-    if(val){var btn=$('nn-emoji-btn');if(btn)btn.textContent=val;document.body.removeChild(tmp);}
+  var existing=$('emoji-picker-grid');
+  if(existing){existing.style.display=existing.style.display==='none'?'grid':'none';return;}
+  var grid=document.createElement('div');
+  grid.id='emoji-picker-grid';
+  grid.style.cssText='display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px;padding:10px;background:#f5f0e8;border:1.5px solid #b8952a;border-radius:10px;';
+  EMOJIS_SANTOS.forEach(function(e){
+    var b=document.createElement('button');
+    b.type='button'; b.textContent=e;
+    b.style.cssText='font-size:1.4rem;background:none;border:2px solid transparent;cursor:pointer;padding:4px;border-radius:6px;';
+    b.onclick=function(){
+      var main=$('nn-emoji-btn');
+      if(main) main.textContent=e;
+      grid.style.display='none';
+    };
+    grid.appendChild(b);
   });
-  try{tmp.dispatchEvent(new KeyboardEvent('keydown',{key:'.',metaKey:true,ctrlKey:true,bubbles:true}));}catch(e){}
+  var wrapper=$('nn-emoji-btn').parentNode.parentNode;
+  wrapper.appendChild(grid);
 }
 async function salvarNaninha(){
   const nome=$('nn-nome').value.trim();
