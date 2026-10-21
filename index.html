@@ -17,6 +17,9 @@ header .icon{font-size:1.9rem;}
 header h1{font-family:Georgia,serif;color:var(--dourado-c);font-size:1.25rem;letter-spacing:.5px;}
 header p{color:rgba(255,255,255,.55);font-size:.75rem;margin-top:2px;}
 .stats{display:flex;gap:8px;padding:12px 16px;background:var(--branco);border-bottom:1px solid var(--creme2);flex-wrap:wrap;}
+.locais{display:flex;gap:8px;}
+.local{flex:1;border:2px solid var(--creme2);background:var(--branco);color:var(--marrom);border-radius:12px;padding:12px;font-weight:700;font-size:.9rem;cursor:pointer;font-family:inherit;}
+.local.active{border-color:var(--dourado);background:#fff8e7;color:var(--azul);}
 .foto{object-fit:cover;border-radius:10px;display:block;margin:0 auto;}
 .stat{cursor:pointer;border-radius:30px;padding:7px 14px;font-size:.78rem;font-weight:700;display:flex;align-items:center;gap:6px;}
 .stat-fora{background:#e8f4fd;color:var(--azul);}
@@ -122,6 +125,19 @@ const setToken = v => { try { if (v) localStorage.setItem('naninhas_codigo', v);
 function pedirCodigo() { const c = (prompt('Código de acesso da equipe:') || '').trim(); setToken(c); return c; }
 let salvando = false;
 let nnFoto = '';
+// Onde acontece a evangelização: Paróquia ou Capela. O último local usado fica guardado no aparelho.
+const LOCAIS = ['Paróquia', 'Capela'];
+const localSalvo = () => { try { const v = localStorage.getItem('naninhas_local'); return LOCAIS.indexOf(v) >= 0 ? v : ''; } catch (e) { return ''; } };
+const guardarLocal = v => { try { localStorage.setItem('naninhas_local', v); } catch (e) {} };
+let localReg = localSalvo();
+let localDev = '';
+let filtroLocal = 'todos';
+const iconeLocal = l => l === 'Capela' ? '⛪ ' : '🏛️ ';
+function botoesLocal(atual, fn) {
+  return LOCAIS.map(l => '<button type="button" class="local' + (atual === l ? ' active' : '') + '" onclick="' + fn + '(\'' + l + '\')">' + iconeLocal(l) + l + '</button>').join('');
+}
+function escolherLocalReg(l) { localReg = l; guardarLocal(l); $('r-locais').innerHTML = botoesLocal(l, 'escolherLocalReg'); }
+function escolherLocalDev(l) { localDev = l; $('dev-locais').innerHTML = botoesLocal(l, 'escolherLocalDev'); }
 const fotoOk = f => typeof f === 'string' && f.indexOf('data:image/') === 0;
 // Foto da naninha quando houver; senão o emoji.
 function icone(id, emoji, px) {
@@ -258,6 +274,7 @@ function trocarAba(aba) {
   abaAtual = aba;
   buscaAtual = '';
   filtroAtual = 'todos';
+  filtroLocal = 'todos';
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.aba === aba));
   renderStats();
   if (aba === 'registrar')  renderRegistrar();
@@ -272,6 +289,7 @@ function abrirHistorico(f) { trocarAba('historico'); filtroAtual = f; renderHist
 function renderRegistrar() {
   $('conteudo').innerHTML = `
     <h2 class="section-title">Registrar novo empréstimo</h2>
+    <div class="field"><label class="label">Onde está sendo feito o empréstimo? *</label><div class="locais" id="r-locais">${botoesLocal(localReg, 'escolherLocalReg')}</div></div>
     <div class="field"><label class="label">Nome da criança *</label><input type="text" id="r-crianca" placeholder="Ex: Maria Clara"></div>
     <div class="field"><label class="label">Responsável</label><input type="text" id="r-resp" placeholder="Nome do pai / mãe / responsável"></div>
     <div class="field"><label class="label">Telefone (WhatsApp) *</label><input type="tel" id="r-tel" placeholder="Ex: 11 99999-9999"></div>
@@ -316,9 +334,10 @@ async function registrar() {
   const telefone = $('r-tel').value.trim();
   const dataSaida = $('r-data').value;
   const dadoOracao = $('r-dado').checked;
+  if (!localReg) { showToast('⚠️ Escolha se o empréstimo é na Paróquia ou na Capela.'); return; }
   if (!crianca || !telefone || !formSelecionada) { showToast('⚠️ Preencha criança, telefone e escolha a naninha!'); return; }
   const nn = naninhas.find(n => n.id === formSelecionada);
-  const reg = { id: 'reg-' + Date.now(), crianca, responsavel, telefone, naninaId: nn.id, naniaNome: nn.nome, naniaEmoji: nn.emoji, oracao: nn.oracao, dataSaida, dadoOracao, devolvida: false, dataEntrada: '' };
+  const reg = { id: 'reg-' + Date.now(), crianca, responsavel, telefone, naninaId: nn.id, naniaNome: nn.nome, naniaEmoji: nn.emoji, oracao: nn.oracao, dataSaida, dadoOracao, devolvida: false, dataEntrada: '', localSaida: localReg, localEntrada: '' };
   salvando = true;
   showToast('⏳ Salvando...');
   try {
@@ -345,7 +364,7 @@ function renderDevolver() {
   devBuscaTel = '';
   $('conteudo').innerHTML = `
     <h2 class="section-title">Registrar devolução</h2>
-    <p class="section-sub">${registros.filter(r => !eDevolvida(r)).length} naninha${registros.filter(r => !eDevolvida(r)).length !== 1 ? 's' : ''} ainda fora da paróquia</p>
+    <p class="section-sub">${registros.filter(r => !eDevolvida(r)).length} empréstimo${registros.filter(r => !eDevolvida(r)).length !== 1 ? 's' : ''} em aberto</p>
     <div class="field">
       <label class="label">Nome da criança</label>
       <input type="text" id="dev-nome" placeholder="Ex: Maria Clara"
@@ -413,7 +432,7 @@ function pesquisarDevolucao() {
         + '<div class="card-info">'
         + '<div class="card-nome">' + esc(r.crianca) + '</div>'
         + '<div class="card-meta">' + esc(r.naniaNome) + ' · ' + esc(r.responsavel || '—') + '</div>'
-        + '<div class="card-meta">Saiu: ' + fmtData(r.dataSaida) + ' · Devolver: ' + dataDevolucao(r.dataSaida) + '</div>'
+        + '<div class="card-meta">Saiu: ' + fmtData(r.dataSaida) + (r.localSaida ? ' (' + esc(r.localSaida) + ')' : '') + ' · Devolver: ' + dataDevolucao(r.dataSaida) + '</div>'
         + dadoHtml
         + '<div class="card-dias ' + (atr ? 'late' : 'ok') + '">' + diasHtml + (atr ? ' · ATRASADA' : '') + '</div>'
         + '</div>'
@@ -429,6 +448,7 @@ function renderHistorico() {
     if (filtroAtual === 'devolvida' && !eDevolvida(r)) return false;
     if (filtroAtual === 'fora' && eDevolvida(r)) return false;
     if (filtroAtual === 'atrasada' && !vencida(r)) return false;
+    if (filtroLocal !== 'todos' && r.localSaida !== filtroLocal) return false;
     if (buscaAtual) {
       const b = buscaAtual.toLowerCase();
       if (!String(r.crianca).toLowerCase().includes(b) && !(r.naniaNome||'').toLowerCase().includes(b) && !(r.responsavel||'').toLowerCase().includes(b)) return false;
@@ -438,8 +458,13 @@ function renderHistorico() {
   $('conteudo').innerHTML = `
     <h2 class="section-title">Histórico de empréstimos</h2>
     <div class="filtros">
-      ${[['todos','Todos'],['fora','📤 Fora da paróquia'],['atrasada','⚠️ Atrasadas'],['devolvida','✅ Devolvidas']].map(([v,l]) =>
+      ${[['todos','Todos'],['fora','📤 Emprestadas'],['atrasada','⚠️ Atrasadas'],['devolvida','✅ Devolvidas']].map(([v,l]) =>
         `<button class="filtro ${filtroAtual===v?'active':''}" onclick="filtroAtual='${v}';renderHistorico()">${l}</button>`
+      ).join('')}
+    </div>
+    <div class="filtros">
+      ${[['todos','Todos os locais'],['Paróquia','🏛️ Paróquia'],['Capela','⛪ Capela']].map(([v,l]) =>
+        `<button class="filtro ${filtroLocal===v?'active':''}" onclick="filtroLocal='${v}';renderHistorico()">${l}</button>`
       ).join('')}
     </div>
     <input class="busca" placeholder="🔍 Buscar por criança, santo ou responsável..." value="${esc(buscaAtual)}" oninput="buscaAtual=this.value;renderHistorico()">
@@ -468,7 +493,7 @@ function renderHistorico() {
                   <div>
                     <div class="card-nome">${esc(r.crianca)}</div>
                     <div class="card-meta">${esc(r.naniaNome)} · ${esc(r.responsavel||'—')} · ${esc(r.telefone)}</div>
-                    <div class="card-meta">Saiu: ${fmtData(r.dataSaida)}${eDevolvida(r)&&r.dataEntrada?' · Voltou: '+fmtData(r.dataEntrada):' · Devolver: '+dataDevolucao(r.dataSaida)}</div>
+                    <div class="card-meta">Saiu: ${fmtData(r.dataSaida)}${r.localSaida?' ('+esc(r.localSaida)+')':''}${eDevolvida(r)&&r.dataEntrada?' · Voltou: '+fmtData(r.dataEntrada)+(r.localEntrada?' ('+esc(r.localEntrada)+')':''):' · Devolver: '+dataDevolucao(r.dataSaida)}</div>
                     ${dado}
                   </div>${badge}
                 </div>${acoes}
@@ -551,24 +576,27 @@ function abrirDevolucao(id) {
   $('dev-texto').innerHTML = 'Confirmar devolução da naninha de <strong>' + esc(nn?nn.nome:modalDevReg.naniaNome) + '</strong> pela criança <strong>' + esc(modalDevReg.crianca) + '</strong>?';
   const dado = modalDevReg.dadoOracao === true || modalDevReg.dadoOracao === 'TRUE' || modalDevReg.dadoOracao === 'true';
   $('dev-dado').style.display = dado ? 'block' : 'none';
+  localDev = LOCAIS.indexOf(modalDevReg.localSaida) >= 0 ? modalDevReg.localSaida : localSalvo();
+  $('dev-locais').innerHTML = botoesLocal(localDev, 'escolherLocalDev');
   $('modal-dev').classList.add('open');
 }
 function fecharDev() { $('modal-dev').classList.remove('open'); modalDevReg = null; }
 async function confirmarDevolucao() {
   if (!modalDevReg || salvando) return;
+  if (!localDev) { showToast('⚠️ Escolha onde a naninha foi devolvida.'); return; }
   const dataEntrada = hoje();
   const id = modalDevReg.id;
   salvando = true;
   showToast('⏳ Salvando...');
   try {
-    await api('devolverNaninha', { id, dataEntrada });
+    await api('devolverNaninha', { id, dataEntrada, localEntrada: localDev });
   } catch (e) {
     salvando = false;
     showToast('⚠️ Não salvou (' + e.message + '). Tente de novo.');
     return;
   }
   salvando = false;
-  registros = registros.map(r => r.id === id ? Object.assign({}, r, { devolvida: true, dataEntrada }) : r);
+  registros = registros.map(r => r.id === id ? Object.assign({}, r, { devolvida: true, dataEntrada, localEntrada: localDev }) : r);
   fecharDev();
   renderStats();
   if (abaAtual === 'devolver') renderDevolver();
@@ -593,6 +621,8 @@ function abrirEdicao(id) {
   $('e-dev').checked = dev;
   $('e-dev-data-box').style.display = dev ? 'block' : 'none';
   $('e-entrada').value = dev ? String(r.dataEntrada || '').split('T')[0] : '';
+  $('e-local-s').value = r.localSaida || '';
+  $('e-local-e').value = r.localEntrada || '';
   $('modal-edit').classList.add('open');
 }
 function fecharEdicao() { $('modal-edit').classList.remove('open'); }
@@ -617,7 +647,9 @@ async function salvarEdicao() {
     dataSaida: $('e-data').value || antigo.dataSaida,
     dadoOracao: $('e-dado').checked,
     devolvida,
-    dataEntrada: devolvida ? ($('e-entrada').value || hoje()) : ''
+    dataEntrada: devolvida ? ($('e-entrada').value || hoje()) : '',
+    localSaida: $('e-local-s').value,
+    localEntrada: devolvida ? $('e-local-e').value : ''
   });
   salvando = true;
   showToast('⏳ Salvando...');
@@ -693,7 +725,7 @@ window.onload = function() { carregarDados(); };
 </header>
 
 <div class="stats">
-  <div class="stat stat-fora" onclick="abrirHistorico('fora')"><span class="stat-num" id="stat-fora">—</span> Fora da paróquia</div>
+  <div class="stat stat-fora" onclick="abrirHistorico('fora')"><span class="stat-num" id="stat-fora">—</span> Emprestadas</div>
   <div class="stat stat-atraso" onclick="abrirHistorico('atrasada')"><span class="stat-num" id="stat-atr">—</span> Em atraso</div>
   <div class="stat stat-dev" onclick="abrirHistorico('devolvida')"><span class="stat-num" id="stat-dev">—</span> Devolvidas</div>
 </div>
@@ -726,6 +758,7 @@ window.onload = function() { carregarDados(); };
   <div class="modal">
     <h3>↩️ Confirmar devolução</h3>
     <p id="dev-texto"></p>
+    <div class="field"><label class="label">Devolvida onde? *</label><div class="locais" id="dev-locais"></div></div>
     <p class="aviso-dado" id="dev-dado">🎲 Lembre de conferir se o dado de oração voltou junto!</p>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="fecharDev()">Cancelar</button>
@@ -781,9 +814,10 @@ window.onload = function() { carregarDados(); };
     <div class="field"><label class="label">Telefone (WhatsApp) *</label><input type="tel" id="e-tel"></div>
     <div class="field"><label class="label">Naninha</label><select id="e-nn"></select></div>
     <div class="field"><label class="label">Data de saída</label><input type="date" id="e-data"></div>
+    <div class="field"><label class="label">Local de saída</label><select id="e-local-s"><option value="">Não informado</option><option value="Paróquia">Paróquia</option><option value="Capela">Capela</option></select></div>
     <div class="check-row"><input type="checkbox" id="e-dado"><label for="e-dado">🎲 Levou o dado de oração junto</label></div>
     <div class="check-row" style="margin-top:10px"><input type="checkbox" id="e-dev" onchange="$('e-dev-data-box').style.display=this.checked?'block':'none'"><label for="e-dev">↩️ Já foi devolvida</label></div>
-    <div class="field" id="e-dev-data-box" style="display:none;margin-top:10px"><label class="label">Data da devolução</label><input type="date" id="e-entrada"></div>
+    <div class="field" id="e-dev-data-box" style="display:none;margin-top:10px"><label class="label">Data da devolução</label><input type="date" id="e-entrada"><label class="label" style="margin-top:10px">Local de devolução</label><select id="e-local-e"><option value="">Não informado</option><option value="Paróquia">Paróquia</option><option value="Capela">Capela</option></select></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="fecharEdicao()">Cancelar</button>
       <button class="btn btn-primary" style="width:auto;padding:10px 18px" onclick="salvarEdicao()">✅ Salvar</button>
