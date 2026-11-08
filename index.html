@@ -349,7 +349,7 @@ async function registrar() {
   }
   salvando = false;
   registros.unshift(reg);
-  const msg = `Olá! 😊 A ${crianca} levou hoje a naninha de *${nn.nome}* para casa!\n\n_Oração desta semana:_\n${nn.oracao}\n\nA data de devolução é *${dataDevolucao(dataSaida)}* (próximo domingo). Qualquer dúvida, estamos à disposição! 🙏`;
+  const msg = `Olá! 😊 A ${crianca} levou hoje a naninha de *${nn.nome}* para casa!\n\n_Oração desta semana:_\n${nn.oracao}\n\nA data de devolução é *${dataDevolucao(dataSaida)}* (próximo domingo). 🙏 Qualquer dúvida, estamos à disposição!`;
   abrirModalWA(telefone, msg);
   formSelecionada = null;
   renderStats();
@@ -556,7 +556,7 @@ function abrirModalWA(telefone, msg) {
 function fecharWA() { $('modal-wa').classList.remove('open'); }
 function enviarWA() {
   const tel = $('wa-tel').value.replace(/[^0-9]/g,'');
-  window.open('https://wa.me/55' + tel + '?text=' + encodeURIComponent($('wa-textarea').value), '_blank');
+  window.open('https://api.whatsapp.com/send?phone=55' + tel + '&text=' + encodeURIComponent($('wa-textarea').value), '_blank');
   fecharWA();
 }
 
@@ -565,8 +565,8 @@ function abrirWALembrete(id, tipo) {
   const nn = naninhas.find(n => n.id === r.naninaId);
   const dataDevol = dataDevolucao(r.dataSaida);
   const msg = tipo === 'lembrete'
-    ? 'Olá! 😊 Só passando pra lembrar que a ' + r.crianca + ' ainda está com a naninha de *' + (nn?nn.nome:r.naniaNome) + '*.\n\nA data de devolução é *' + dataDevol + '*. Por favor, lembre de trazer no próximo domingo. Obrigada! 🙏'
-    : 'Olá! 🙏 A naninha de *' + (nn?nn.nome:r.naniaNome) + '* da ' + r.crianca + ' já está há ' + diasAtraso(r.dataSaida) + ' dias com vocês. A data de devolução era *' + dataDevol + '*.\n\nPor favor, lembre de trazer no próximo domingo. Contamos com a colaboração de vocês! 💛';
+    ? 'Olá! 😊 Só passando pra lembrar que a ' + r.crianca + ' ainda está com a naninha de *' + (nn?nn.nome:r.naniaNome) + '*.\n\nA data de devolução é *' + dataDevol + '*. 🙏 Por favor, lembre de trazer no próximo domingo. Obrigada!'
+    : 'Olá! 🙏 A naninha de *' + (nn?nn.nome:r.naniaNome) + '* da ' + r.crianca + ' já está há ' + diasAtraso(r.dataSaida) + ' dias com vocês. A data de devolução era *' + dataDevol + '*.\n\nPor favor, lembre de trazer no próximo domingo. 💛 Contamos com a colaboração de vocês!';
   abrirModalWA(r.telefone, msg);
 }
 
