@@ -122,7 +122,39 @@ const hoje = () => { const d = new Date(); return d.getFullYear() + '-' + String
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const getToken = () => { try { return localStorage.getItem('naninhas_codigo') || ''; } catch (e) { return ''; } };
 const setToken = v => { try { if (v) localStorage.setItem('naninhas_codigo', v); else localStorage.removeItem('naninhas_codigo'); } catch (e) {} };
-function pedirCodigo() { const c = (prompt('Código de acesso da equipe:') || '').trim(); setToken(c); return c; }
+// WhatsApp da coordenação (só números, com DDD, ex: 11999990000). Aparece depois de várias tentativas erradas.
+const WHATSAPP_COORD = '';
+const MAX_TENTATIVAS = 10;
+const tentativas = k => { try { return parseInt(localStorage.getItem('naninhas_tent_' + k) || '0', 10) || 0; } catch (e) { return 0; } };
+const setTentativas = (k, n) => { try { if (n) localStorage.setItem('naninhas_tent_' + k, String(n)); else localStorage.removeItem('naninhas_tent_' + k); } catch (e) {} };
+// Depois de MAX_TENTATIVAS erros seguidos, orienta a falar com a Talita. Não bloqueia: é só um aviso.
+function blocoContato(k) {
+  if (tentativas(k) < MAX_TENTATIVAS) return '';
+  const num = String(WHATSAPP_COORD).replace(/\D/g, '');
+  const msg = 'Olá, Talita! Não estou conseguindo entrar no app das naninhas' + (k === 'admin' ? ' (aba Admin).' : '.');
+  return '<div style="margin-top:16px;padding:12px;border-radius:12px;background:var(--creme);text-align:left">'
+    + '<p style="font-weight:700;color:var(--marrom)">Não consegue entrar?</p>'
+    + '<p style="font-size:.85rem;margin:4px 0 10px">Já foram ' + tentativas(k) + ' tentativas. Fale com a Talita para confirmar o código certo.</p>'
+    + (num ? '<a class="btn btn-wa" target="_blank" rel="noopener" href="https://api.whatsapp.com/send?phone=55' + num + '&text=' + encodeURIComponent(msg) + '">📲 Falar com a Talita no WhatsApp</a>' : '')
+    + '</div>';
+}
+function focar(id) { setTimeout(() => { const i = $(id); if (i && i.focus) i.focus(); }, 50); }
+function telaCodigo(erro) {
+  $('conteudo').innerHTML = `<div class="empty"><div class="empty-icon">🔒</div>
+    <p><b>Código de acesso da equipe</b></p>
+    <p style="margin-top:6px;font-size:.85rem">Digite o código que a Talita passou. Maiúscula, acento e espaço não fazem diferença.</p>
+    ${erro ? '<p style="color:var(--vermelho);font-weight:700;margin-top:12px">' + esc(erro) + '</p>' : ''}
+    <div class="field" style="margin-top:14px"><input type="text" id="cod-equipe" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" onkeydown="if(event.key==='Enter')entrarCodigo()"></div>
+    <button class="btn btn-primary" onclick="entrarCodigo()">Entrar</button>
+    ${blocoContato('equipe')}</div>`;
+  focar('cod-equipe');
+}
+function entrarCodigo() {
+  const c = ($('cod-equipe').value || '').trim();
+  if (!c) { telaCodigo('Digite o código para entrar.'); return; }
+  setToken(c);
+  carregarDados();
+}
 let salvando = false;
 let nnFoto = '';
 // Onde acontece a evangelização: Paróquia ou Capela. O último local usado fica guardado no aparelho.
@@ -244,18 +276,22 @@ const NANINHAS_PADRAO = [
 ];
 
 async function carregarDados() {
-  if (!getToken() && !pedirCodigo()) {
-    $('conteudo').innerHTML = '<div class="empty"><div class="empty-icon">🔒</div><p>Informe o código de acesso da equipe para abrir o app.</p><button class="btn btn-primary" style="margin-top:14px" onclick="carregarDados()">Informar código</button></div>';
-    return;
-  }
+  if (!getToken()) { telaCodigo(''); return; }
   $('conteudo').innerHTML = '<div class="loader">Carregando... 🕊️</div>';
   try {
     const [nn, rr] = await Promise.all([api('getNaninhas'), api('getRegistros')]);
     naninhas = (nn && nn.length) ? nn : NANINHAS_PADRAO;
     registros = rr || [];
+    setTentativas('equipe', 0);
     trocarAba(location.hash === '#lembretes' ? 'lembretes' : 'registrar');
   } catch (e) {
-    const msg = e.message === 'Não autorizado' ? 'Código de acesso incorreto.' : 'Não consegui conectar com a planilha. Confira a internet e tente de novo.';
+    if (e.message === 'Não autorizado') {
+      const n = tentativas('equipe') + 1;
+      setTentativas('equipe', n);
+      telaCodigo('Código incorreto. Confira e tente de novo.' + (n > 1 ? ' (tentativa ' + n + ')' : ''));
+      return;
+    }
+    const msg = 'Não consegui conectar com a planilha. Confira a internet e tente de novo.';
     $('conteudo').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><p>' + esc(msg) + '</p><button class="btn btn-primary" style="margin-top:14px" onclick="carregarDados()">Tentar de novo</button></div>';
   }
 }
@@ -671,7 +707,9 @@ function adminLogin(erro) {
     <p class="section-sub">Área da coordenação. Digite o código de administrador.</p>
     ${erro ? '<p style="color:var(--vermelho);font-weight:700;margin-bottom:10px">' + esc(erro) + '</p>' : ''}
     <div class="field"><label class="label">Código de administrador</label><input type="password" id="adm-cod" autocomplete="off" onkeydown="if(event.key==='Enter')entrarAdmin()"></div>
-    <button class="btn btn-primary" onclick="entrarAdmin()">Entrar</button>`;
+    <button class="btn btn-primary" onclick="entrarAdmin()">Entrar</button>
+    ${blocoContato('admin')}`;
+  focar('adm-cod');
 }
 function entrarAdmin() {
   const c = ($('adm-cod').value || '').trim();
@@ -689,10 +727,21 @@ async function renderAdmin() {
     lista = await apiAdmin('getAvisos');
   } catch (e) {
     if (abaAtual !== 'admin') return;
-    if (e.message === 'Admin não autorizado') { setAdmin(''); adminLogin('Código de administrador incorreto.'); }
-    else $('conteudo').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><p>' + esc(e.message) + '</p><button class="btn btn-primary" style="margin-top:14px" onclick="renderAdmin()">Tentar de novo</button></div>';
+    setAdmin(''); // nunca fica preso num código errado: volta para o formulário
+    if (e.message === 'Admin não autorizado') {
+      const n = tentativas('admin') + 1;
+      setTentativas('admin', n);
+      adminLogin('Código de administrador incorreto. Tente de novo.' + (n > 1 ? ' (tentativa ' + n + ')' : ''));
+    } else if (/Ação não reconhecida/.test(e.message)) {
+      adminLogin('O Apps Script ainda está na versão antiga. Crie uma Nova versão da implantação e tente de novo.');
+    } else if (/ADMIN_CODIGO/.test(e.message)) {
+      adminLogin(e.message);
+    } else {
+      adminLogin('Não consegui validar agora (' + e.message + '). Confira a internet e tente de novo.');
+    }
     return;
   }
+  setTentativas('admin', 0);
   if (abaAtual !== 'admin') return;
   lista = lista.slice().sort((a, b) => (a.status === 'pendente' ? 0 : 1) - (b.status === 'pendente' ? 0 : 1));
   const pendentes = lista.filter(a => a.status === 'pendente').length;
