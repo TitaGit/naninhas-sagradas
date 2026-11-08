@@ -90,6 +90,21 @@ textarea{resize:vertical;}
 .modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
 .aviso-dado{color:var(--dourado);font-size:.83rem;font-weight:700;margin-top:8px;}
 .loader{text-align:center;padding:30px;color:var(--cinza);font-size:.9rem;}
+#btn-ajuda{margin-left:auto;width:40px;height:40px;border-radius:50%;border:2px solid var(--dourado-c);background:transparent;color:var(--dourado-c);font-size:1.2rem;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;}
+#onb{position:fixed;inset:0;background:rgba(20,25,50,.78);display:none;align-items:center;justify-content:center;z-index:5000;padding:16px;}
+#onb.open{display:flex;}
+#onb .card{background:var(--branco);border-radius:20px;padding:28px 22px 20px;max-width:440px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 12px 50px rgba(0,0,0,.4);text-align:center;}
+#onb .onb-emoji{font-size:3.2rem;line-height:1;margin-bottom:10px;}
+#onb h2{color:var(--azul);font-family:Georgia,serif;font-size:1.4rem;margin-bottom:12px;}
+#onb .onb-txt{color:var(--marrom);font-size:1.05rem;line-height:1.6;text-align:left;}
+#onb .onb-txt ul{margin:8px 0 0 20px;}
+#onb .onb-txt li{margin-bottom:6px;}
+#onb .dots{display:flex;gap:7px;justify-content:center;margin:18px 0 14px;}
+#onb .dots span{width:9px;height:9px;border-radius:50%;background:var(--creme2);}
+#onb .dots span.on{background:var(--dourado);width:22px;border-radius:5px;}
+#onb .onb-bt{display:flex;gap:8px;}
+#onb .onb-bt .btn{flex:1;padding:14px;font-size:1rem;border-radius:12px;}
+#onb .onb-pular{background:none;border:none;color:var(--marrom);opacity:.6;margin-top:12px;font-size:.85rem;cursor:pointer;text-decoration:underline;font-family:inherit;}
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--azul);color:var(--branco);padding:11px 22px;border-radius:40px;font-weight:700;font-size:.88rem;z-index:9999;display:none;box-shadow:0 4px 20px rgba(0,0,0,.3);white-space:nowrap;}
 .nn-list-item{background:var(--branco);border-radius:13px;padding:14px;margin-bottom:9px;border:1.5px solid var(--creme2);display:flex;align-items:flex-start;gap:12px;}
 .nn-list-emoji{font-size:1.8rem;flex-shrink:0;}
@@ -275,6 +290,37 @@ const NANINHAS_PADRAO = [
   { id: 'dado-oracao',      nome: 'Dado de Oração',          emoji: '🎲', oracao: 'O dado de oração ajuda a família a rezar junta. Role o dado e reze a oração do número que sair! 🙏' },
 ];
 
+// ===== Onboarding / ajuda =====
+const ONB_PASSOS = [
+  { e: '🧸', t: 'Bem-vindo ao Naninhas Sagradas', h: '<p>Aqui a gente controla quais naninhas estão emprestadas, com quem estão e quando voltam.</p><p style="margin-top:10px">Em 1 minutinho eu mostro como usar. É só tocar em <b>Próximo</b>.</p>' },
+  { e: '✏️', t: 'Emprestar uma naninha', h: '<ul><li>Abra a aba <b>Registrar novo empréstimo</b></li><li>Escolha <b>Paróquia</b> ou <b>Capela</b></li><li>Escreva o nome da criança e o telefone</li><li>Toque na naninha que vai sair</li><li>Toque em <b>Registrar saída e gerar mensagem WhatsApp</b></li></ul>' },
+  { e: '↩️', t: 'Devolver', h: '<ul><li>Abra a aba <b>Devolver</b></li><li>Procure pelo nome da criança ou pelos 4 últimos números do telefone</li><li>Toque em <b>Pesquisar</b></li><li>Toque em <b>Registrar devolução</b> e depois em <b>Confirmar devolução</b></li></ul>' },
+  { e: '🔔', t: 'Lembretes', h: '<ul><li>Abra a aba <b>Lembretes</b></li><li>Toque em <b>Enviar lembrete</b> (ou cobrança, se estiver atrasada)</li><li>O WhatsApp abre com a mensagem pronta, é só enviar</li><li>Depois que alguém enviou, o botão fica bloqueado até o dia seguinte, assim ninguém manda duas vezes</li></ul>' },
+  { e: '📋', t: 'Histórico e as bolinhas', h: '<ul><li>As bolinhas lá em cima mostram quantas estão <b>Emprestadas</b>, <b>Em atraso</b> e <b>Devolvidas</b>. Toque nelas para ver a lista</li><li>Na aba <b>Histórico</b> você vê tudo e pode usar <b>Editar</b> para corrigir um erro</li></ul>' },
+  { e: '🙏', t: 'Pronto!', h: '<p>Se esquecer alguma coisa, toque no botão <b>?</b> no topo da tela para ver este guia de novo.</p><p style="margin-top:10px">Se aparecer a mensagem <b>"Não salvou"</b>, significa que o registro <b>não foi gravado</b>. Tente de novo e, se continuar, avise a Talita.</p>' }
+];
+let onbPasso = 0;
+const onbVisto = () => { try { return localStorage.getItem('naninhas_onb') === '1'; } catch (e) { return false; } };
+const onbMarcar = () => { try { localStorage.setItem('naninhas_onb', '1'); } catch (e) {} };
+function abrirOnboarding() { onbPasso = 0; onbRender(); $('onb').classList.add('open'); }
+function fecharOnboarding() { onbMarcar(); $('onb').classList.remove('open'); }
+function onbIr(d) {
+  const n = onbPasso + d;
+  if (n >= ONB_PASSOS.length) { fecharOnboarding(); return; }
+  if (n < 0) return;
+  onbPasso = n; onbRender();
+}
+function onbRender() {
+  const p = ONB_PASSOS[onbPasso], ult = onbPasso === ONB_PASSOS.length - 1;
+  $('onb-emoji').textContent = p.e;
+  $('onb-titulo').textContent = p.t;
+  $('onb-txt').innerHTML = p.h;
+  $('onb-dots').innerHTML = ONB_PASSOS.map((_, i) => '<span class="' + (i === onbPasso ? 'on' : '') + '"></span>').join('');
+  $('onb-voltar').style.visibility = onbPasso === 0 ? 'hidden' : 'visible';
+  $('onb-prox').textContent = ult ? 'Começar' : 'Próximo';
+  $('onb-pular').style.display = ult ? 'none' : '';
+}
+
 async function carregarDados() {
   if (!getToken()) { telaCodigo(''); return; }
   $('conteudo').innerHTML = '<div class="loader">Carregando... 🕊️</div>';
@@ -285,6 +331,7 @@ async function carregarDados() {
     setTentativas('equipe', 0);
     const atalho = String(location.hash || '').replace('#', '');
     trocarAba(['lembretes', 'admin'].indexOf(atalho) >= 0 ? atalho : 'registrar');
+    if (!onbVisto()) abrirOnboarding();
   } catch (e) {
     if (e.message === 'Não autorizado') {
       const n = tentativas('equipe') + 1;
@@ -960,7 +1007,22 @@ window.onload = function() { carregarDados(); };
     <h1>Naninhas Sagradas</h1>
     <p>Evangelização Infantil · Controle de Empréstimo</p>
   </div>
+  <button id="btn-ajuda" onclick="abrirOnboarding()" aria-label="Ajuda: como usar" title="Como usar">?</button>
 </header>
+
+<div id="onb" role="dialog" aria-modal="true" aria-labelledby="onb-titulo">
+  <div class="card">
+    <div class="onb-emoji" id="onb-emoji"></div>
+    <h2 id="onb-titulo"></h2>
+    <div class="onb-txt" id="onb-txt"></div>
+    <div class="dots" id="onb-dots"></div>
+    <div class="onb-bt">
+      <button class="btn btn-ghost" id="onb-voltar" onclick="onbIr(-1)">Voltar</button>
+      <button class="btn btn-primary" style="margin-top:0" id="onb-prox" onclick="onbIr(1)">Próximo</button>
+    </div>
+    <button class="onb-pular" id="onb-pular" onclick="fecharOnboarding()">Pular</button>
+  </div>
+</div>
 
 <div class="stats">
   <div class="stat stat-fora" onclick="abrirHistorico('fora')"><span class="stat-num" id="stat-fora">—</span> Emprestadas</div>
