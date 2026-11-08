@@ -90,7 +90,12 @@ textarea{resize:vertical;}
 .modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
 .aviso-dado{color:var(--dourado);font-size:.83rem;font-weight:700;margin-top:8px;}
 .loader{text-align:center;padding:30px;color:var(--cinza);font-size:.9rem;}
-#btn-ajuda{margin-left:auto;width:40px;height:40px;border-radius:50%;border:2px solid var(--dourado-c);background:transparent;color:var(--dourado-c);font-size:1.2rem;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;}
+#btn-fb{margin-left:auto;width:40px;height:40px;border-radius:50%;border:2px solid var(--dourado-c);background:transparent;font-size:1.05rem;cursor:pointer;font-family:inherit;flex-shrink:0;}
+#btn-ajuda{width:40px;height:40px;border-radius:50%;border:2px solid var(--dourado-c);background:transparent;color:var(--dourado-c);font-size:1.2rem;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;}
+.fb-tipos{display:flex;gap:6px;margin-bottom:12px;}
+.fb-tipos .local{padding:10px 4px;font-size:.82rem;}
+#fb-prev{margin:8px 0 0;display:none;}
+#fb-prev img{max-width:100%;max-height:180px;border-radius:10px;border:1px solid var(--creme2);}
 #onb{position:fixed;inset:0;z-index:5000;display:none;}
 #onb.open{display:block;}
 #onb-bloq{position:absolute;inset:0;background:transparent;}
@@ -292,6 +297,66 @@ const NANINHAS_PADRAO = [
   { id: 'dado-oracao',      nome: 'Dado de Oração',          emoji: '🎲', oracao: 'O dado de oração ajuda a família a rezar junta. Role o dado e reze a oração do número que sair! 🙏' },
 ];
 
+// ===== Feedback =====
+let fbTipo = 'Problema', fbFoto = '', fbEnviando = false;
+const FB_TIPOS = [['Problema', '🐞 Problema'], ['Melhoria', '💡 Melhoria'], ['Outro', '💬 Outro']];
+function fbRenderTipos() {
+  $('fb-tipos').innerHTML = FB_TIPOS.map(([v, l]) => '<button type="button" class="local' + (fbTipo === v ? ' active' : '') + '" onclick="fbEscolherTipo(\'' + v + '\')">' + l + '</button>').join('');
+}
+function fbEscolherTipo(v) { fbTipo = v; fbRenderTipos(); }
+function abrirFeedback() {
+  let nome = '';
+  try { nome = localStorage.getItem('naninhas_nome') || ''; } catch (e) {}
+  if (!$('fb-nome').value) $('fb-nome').value = nome;
+  fbRenderTipos();
+  $('modal-fb').classList.add('open');
+}
+function fecharFeedback() { $('modal-fb').classList.remove('open'); }
+function fbMostrarFoto() {
+  $('fb-prev').style.display = fbFoto ? 'block' : 'none';
+  $('fb-prev').innerHTML = fbFoto ? '<img src="' + fbFoto + '" alt="">' : '';
+  $('fb-rem').style.display = fbFoto ? 'inline-block' : 'none';
+}
+function removerFotoFeedback() { fbFoto = ''; $('fb-foto').value = ''; fbMostrarFoto(); }
+// Reduz o print para no máximo 1280 px no lado maior e comprime em JPEG.
+function escolherFotoFeedback(input) {
+  const f = input.files && input.files[0];
+  if (!f) return;
+  showToast('⏳ Processando foto...');
+  const url = URL.createObjectURL(f);
+  const img = new Image();
+  img.onload = () => {
+    let out = '';
+    for (const max of [1280, 1000, 800]) {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      out = c.toDataURL('image/jpeg', 0.75);
+      if (out.length <= 1500000) break;
+    }
+    URL.revokeObjectURL(url);
+    fbFoto = out; fbMostrarFoto(); showToast('✅ Foto pronta');
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); input.value = ''; showToast('⚠️ Não consegui abrir essa imagem. Tente em JPG ou PNG.'); };
+  img.src = url;
+}
+async function enviarFeedback() {
+  if (fbEnviando) return;
+  const msg = $('fb-msg').value.trim(), nome = $('fb-nome').value.trim();
+  if (!msg) { showToast('Escreva o que aconteceu ou a sua sugestão.'); return; }
+  fbEnviando = true; $('fb-enviar').textContent = 'Enviando...';
+  try {
+    const out = await api('addFeedback', { tipo: fbTipo, nome, mensagem: msg, foto: fbFoto, tela: abaAtual, aparelho: String(navigator.userAgent || '').slice(0, 120) });
+    try { if (nome) localStorage.setItem('naninhas_nome', nome); } catch (e) {}
+    $('fb-msg').value = ''; removerFotoFeedback(); fecharFeedback();
+    showToast(out && out.aviso ? '✅ Recebido, mas a foto não foi salva. Mande de novo só a foto.' : '✅ Feedback enviado. Obrigada!');
+  } catch (e) {
+    showToast('⚠️ Não enviou: ' + (e.message === 'Não autorizado' ? 'digite o código de novo.' : /Ação não reconhecida/.test(e.message) ? 'o sistema ainda está sendo atualizado. Avise a Talita.' : 'confira a internet e tente de novo. Seu texto continua aqui.'));
+  }
+  fbEnviando = false; $('fb-enviar').textContent = 'Enviar';
+}
+
 // ===== Tour guiado / ajuda =====
 const ONB_PASSOS = [
   { aba: 'registrar', e: '🧸', t: 'Bem-vindo ao Naninhas Sagradas', h: 'Vou te mostrar, na própria tela, onde tocar em cada passo. Leva 1 minuto. Toque em <b>Próximo</b>.' },
@@ -311,7 +376,7 @@ const ONB_PASSOS = [
   { aba: 'historico', sel: '.stats', t: 'As bolinhas', h: 'Mostram quantas estão <b>Emprestadas</b>, <b>Em atraso</b> e <b>Devolvidas</b>. Toque em uma para abrir o Histórico já filtrado.' },
   { aba: 'historico', sel: '.filtros', t: 'Histórico e filtros', h: 'Na aba <b>Histórico</b> você filtra por situação e por local. Em cada cartão: <b>Lembrete</b> avisa a família, <b>Devolvida</b> registra a volta e <b>Editar</b> corrige um registro.<br><br>O botão <b>Cobrança</b> fica cinza e só libera depois do domingo de devolução, se a naninha ainda não voltou. A mensagem pede a naninha de volta para ajudar outros lares a evangelizar.' },
   { aba: 'historico', sel: '.busca', t: 'Busca', h: 'Procure por criança, santo ou responsável.' },
-  { aba: 'registrar', e: '🙏', t: 'Pronto!', h: 'Para rever este tour, toque no <b>?</b> no topo da tela.<br><br>Se aparecer <b>"Não salvou"</b>, o registro <b>não foi gravado</b>. Tente de novo e, se continuar, avise a Talita.' }
+  { aba: 'registrar', e: '🙏', t: 'Pronto!', h: 'Para rever este tour, toque no <b>?</b> no topo da tela. Para contar um problema ou mandar uma ideia (pode anexar um print), toque no <b>💬</b> ao lado.<br><br>Se aparecer <b>"Não salvou"</b>, o registro <b>não foi gravado</b>. Tente de novo e, se continuar, avise a Talita.' }
 ];
 let onbPasso = 0;
 const onbVisto = () => { try { return localStorage.getItem('naninhas_onb') === '1'; } catch (e) { return false; } };
@@ -1055,6 +1120,7 @@ window.onload = function() { carregarDados(); };
     <h1>Naninhas Sagradas</h1>
     <p>Evangelização Infantil · Controle de Empréstimo</p>
   </div>
+  <button id="btn-fb" onclick="abrirFeedback()" aria-label="Enviar feedback" title="Enviar feedback">💬</button>
   <button id="btn-ajuda" onclick="abrirOnboarding()" aria-label="Ajuda: como usar" title="Como usar">?</button>
 </header>
 
@@ -1091,6 +1157,25 @@ window.onload = function() { carregarDados(); };
 
 <div class="main">
   <div id="conteudo"><div class="loader">Carregando... 🕊️</div></div>
+</div>
+
+<div class="overlay" id="modal-fb">
+  <div class="modal" style="max-height:92vh;overflow:auto">
+    <h3>💬 Mandar feedback</h3>
+    <p>Encontrou um problema ou tem uma ideia? Conte aqui. A Talita lê tudo.</p>
+    <div class="fb-tipos" id="fb-tipos"></div>
+    <div class="field"><label class="label">Seu nome</label><input type="text" id="fb-nome" placeholder="Como devo te chamar?"></div>
+    <div class="field"><label class="label">O que aconteceu ou o que você sugere? *</label><textarea id="fb-msg" rows="5" style="min-height:110px" placeholder="Conte com detalhes: em qual tela estava, o que tocou, o que apareceu."></textarea></div>
+    <div class="field"><label class="label">Print ou foto (opcional)</label>
+      <input type="file" id="fb-foto" accept="image/*" onchange="escolherFotoFeedback(this)">
+      <div id="fb-prev"></div>
+      <button type="button" class="btn btn-sm btn-ghost" id="fb-rem" style="display:none;margin-top:6px" onclick="removerFotoFeedback()">Tirar a foto</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="fecharFeedback()">Cancelar</button>
+      <button class="btn btn-primary" style="width:auto;margin-top:0;padding:10px 18px" id="fb-enviar" onclick="enviarFeedback()">Enviar</button>
+    </div>
+  </div>
 </div>
 
 <div class="overlay" id="modal-wa">
