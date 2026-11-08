@@ -91,20 +91,22 @@ textarea{resize:vertical;}
 .aviso-dado{color:var(--dourado);font-size:.83rem;font-weight:700;margin-top:8px;}
 .loader{text-align:center;padding:30px;color:var(--cinza);font-size:.9rem;}
 #btn-ajuda{margin-left:auto;width:40px;height:40px;border-radius:50%;border:2px solid var(--dourado-c);background:transparent;color:var(--dourado-c);font-size:1.2rem;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;}
-#onb{position:fixed;inset:0;background:rgba(20,25,50,.78);display:none;align-items:center;justify-content:center;z-index:5000;padding:16px;}
-#onb.open{display:flex;}
-#onb .card{background:var(--branco);border-radius:20px;padding:28px 22px 20px;max-width:440px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 12px 50px rgba(0,0,0,.4);text-align:center;}
-#onb .onb-emoji{font-size:3.2rem;line-height:1;margin-bottom:10px;}
-#onb h2{color:var(--azul);font-family:Georgia,serif;font-size:1.4rem;margin-bottom:12px;}
-#onb .onb-txt{color:var(--marrom);font-size:1.05rem;line-height:1.6;text-align:left;}
-#onb .onb-txt ul{margin:8px 0 0 20px;}
-#onb .onb-txt li{margin-bottom:6px;}
-#onb .dots{display:flex;gap:7px;justify-content:center;margin:18px 0 14px;}
-#onb .dots span{width:9px;height:9px;border-radius:50%;background:var(--creme2);}
-#onb .dots span.on{background:var(--dourado);width:22px;border-radius:5px;}
-#onb .onb-bt{display:flex;gap:8px;}
-#onb .onb-bt .btn{flex:1;padding:14px;font-size:1rem;border-radius:12px;}
-#onb .onb-pular{background:none;border:none;color:var(--marrom);opacity:.6;margin-top:12px;font-size:.85rem;cursor:pointer;text-decoration:underline;font-family:inherit;}
+#onb{position:fixed;inset:0;z-index:5000;display:none;}
+#onb.open{display:block;}
+#onb-bloq{position:absolute;inset:0;background:transparent;}
+#onb-bloq.escuro{background:rgba(20,25,50,.78);}
+#onb-spot{position:fixed;border-radius:12px;box-shadow:0 0 0 9999px rgba(20,25,50,.78);border:3px solid var(--dourado);pointer-events:none;display:none;transition:all .2s;}
+#onb-card{position:fixed;left:12px;right:12px;margin:0 auto;max-width:440px;background:var(--branco);border-radius:18px;padding:18px 18px 14px;box-shadow:0 10px 40px rgba(0,0,0,.45);}
+#onb-card.topo{top:12px;}
+#onb-card.base{bottom:12px;}
+#onb-card.meio{top:50%;transform:translateY(-50%);}
+#onb-card .onb-emoji{font-size:2.6rem;line-height:1;margin-bottom:6px;text-align:center;}
+#onb-card h2{color:var(--azul);font-family:Georgia,serif;font-size:1.2rem;margin-bottom:8px;}
+#onb-card .onb-txt{color:var(--marrom);font-size:1rem;line-height:1.55;}
+#onb-card .onb-prog{color:var(--marrom);opacity:.6;font-size:.78rem;margin:12px 0 10px;}
+#onb-card .onb-bt{display:flex;gap:8px;}
+#onb-card .onb-bt .btn{flex:1;padding:13px;font-size:1rem;border-radius:12px;}
+#onb-card .onb-pular{background:none;border:none;color:var(--marrom);opacity:.6;margin-top:10px;font-size:.85rem;cursor:pointer;text-decoration:underline;font-family:inherit;width:100%;}
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--azul);color:var(--branco);padding:11px 22px;border-radius:40px;font-weight:700;font-size:.88rem;z-index:9999;display:none;box-shadow:0 4px 20px rgba(0,0,0,.3);white-space:nowrap;}
 .nn-list-item{background:var(--branco);border-radius:13px;padding:14px;margin-bottom:9px;border:1.5px solid var(--creme2);display:flex;align-items:flex-start;gap:12px;}
 .nn-list-emoji{font-size:1.8rem;flex-shrink:0;}
@@ -290,36 +292,81 @@ const NANINHAS_PADRAO = [
   { id: 'dado-oracao',      nome: 'Dado de Oração',          emoji: '🎲', oracao: 'O dado de oração ajuda a família a rezar junta. Role o dado e reze a oração do número que sair! 🙏' },
 ];
 
-// ===== Onboarding / ajuda =====
+// ===== Tour guiado / ajuda =====
 const ONB_PASSOS = [
-  { e: '🧸', t: 'Bem-vindo ao Naninhas Sagradas', h: '<p>Aqui a gente controla quais naninhas estão emprestadas, com quem estão e quando voltam.</p><p style="margin-top:10px">Em 1 minutinho eu mostro como usar. É só tocar em <b>Próximo</b>.</p>' },
-  { e: '✏️', t: 'Emprestar uma naninha', h: '<ul><li>Abra a aba <b>Registrar novo empréstimo</b></li><li>Escolha <b>Paróquia</b> ou <b>Capela</b></li><li>Escreva o nome da criança e o telefone</li><li>Toque na naninha que vai sair</li><li>Toque em <b>Registrar saída e gerar mensagem WhatsApp</b></li></ul>' },
-  { e: '↩️', t: 'Devolver', h: '<ul><li>Abra a aba <b>Devolver</b></li><li>Procure pelo nome da criança ou pelos 4 últimos números do telefone</li><li>Toque em <b>Pesquisar</b></li><li>Toque em <b>Registrar devolução</b> e depois em <b>Confirmar devolução</b></li></ul>' },
-  { e: '🔔', t: 'Lembretes', h: '<ul><li>Abra a aba <b>Lembretes</b></li><li>Toque em <b>Enviar lembrete</b> (ou cobrança, se estiver atrasada)</li><li>O WhatsApp abre com a mensagem pronta, é só enviar</li><li>Depois que alguém enviou, o botão fica bloqueado até o dia seguinte, assim ninguém manda duas vezes</li></ul>' },
-  { e: '📋', t: 'Histórico e as bolinhas', h: '<ul><li>As bolinhas lá em cima mostram quantas estão <b>Emprestadas</b>, <b>Em atraso</b> e <b>Devolvidas</b>. Toque nelas para ver a lista</li><li>Na aba <b>Histórico</b> você vê tudo e pode usar <b>Editar</b> para corrigir um erro</li></ul>' },
-  { e: '🙏', t: 'Pronto!', h: '<p>Se esquecer alguma coisa, toque no botão <b>?</b> no topo da tela para ver este guia de novo.</p><p style="margin-top:10px">Se aparecer a mensagem <b>"Não salvou"</b>, significa que o registro <b>não foi gravado</b>. Tente de novo e, se continuar, avise a Talita.</p>' }
+  { aba: 'registrar', e: '🧸', t: 'Bem-vindo ao Naninhas Sagradas', h: 'Vou te mostrar, na própria tela, onde tocar em cada passo. Leva 1 minuto. Toque em <b>Próximo</b>.' },
+  { aba: 'registrar', sel: '#r-locais', t: 'Onde você está?', h: 'Escolha <b>Paróquia</b> ou <b>Capela</b>. O app lembra a última escolha neste celular.' },
+  { aba: 'registrar', sel: '#r-crianca', t: 'Nome da criança', h: 'Obrigatório. Escreva o nome da criança que vai levar a naninha.' },
+  { aba: 'registrar', sel: '#r-resp', t: 'Responsável', h: 'Opcional, mas é com esse nome que a mensagem de WhatsApp cumprimenta a família.' },
+  { aba: 'registrar', sel: '#r-tel', t: 'Telefone (WhatsApp)', h: 'Obrigatório, com DDD. É para esse número que a mensagem vai.' },
+  { aba: 'registrar', sel: '#reg-nn-grid', t: 'Escolha a naninha', h: 'Toque na foto da naninha que vai sair. A oração dela aparece logo abaixo.' },
+  { aba: 'registrar', sel: '#r-data', t: 'Data de saída', h: 'Já vem com a data de hoje. A devolução é sempre o domingo seguinte.' },
+  { aba: 'registrar', sel: '.check-row', t: 'Dado de oração', h: 'Marque se o dado foi emprestado junto. Na devolução o app lembra de conferir se voltou.' },
+  { aba: 'registrar', sel: '#conteudo .btn-primary', t: 'Registrar a saída', h: 'Este botão grava e abre a mensagem de WhatsApp pronta. Espere aparecer a confirmação de que <b>salvou</b> antes de fechar o app.' },
+  { aba: 'devolver', sel: '#dev-nome', t: 'Devolver: procure a criança', h: 'Na aba <b>Devolver</b>, digite o nome da criança.' },
+  { aba: 'devolver', sel: '#dev-tel', t: 'Ou os 4 últimos dígitos', h: 'Pode preencher só o nome, só os dígitos do telefone, ou os dois.' },
+  { aba: 'devolver', sel: '#btn-pesquisar', t: 'Pesquisar', h: 'Aparecem os empréstimos em aberto. No cartão certo, toque em <b>Registrar devolução</b> e depois em <b>Confirmar devolução</b>.' },
+  { aba: 'lembretes', sel: ['.card-actions', '.section-sub'], t: 'Lembretes', h: 'A aba <b>Lembretes</b> lista quem ainda não devolveu. Toque em <b>Enviar lembrete</b> (ou <b>cobrança</b>, se atrasou) e o WhatsApp abre com a mensagem pronta. Depois de enviado, o botão trava até o dia seguinte para todos.' },
+  { aba: 'lembretes', sel: '#aviso-box', t: 'Aviso por e-mail', h: 'Aqui você se cadastra para receber um e-mail na sexta e no sábado quando houver lembretes pendentes. A Talita aprova o cadastro.' },
+  { aba: 'historico', sel: '.stats', t: 'As bolinhas', h: 'Mostram quantas estão <b>Emprestadas</b>, <b>Em atraso</b> e <b>Devolvidas</b>. Toque em uma para abrir o Histórico já filtrado.' },
+  { aba: 'historico', sel: '.filtros', t: 'Histórico e filtros', h: 'Na aba <b>Histórico</b> você filtra por situação e por local e, em cada cartão, pode tocar em <b>Editar</b> para corrigir um registro.' },
+  { aba: 'historico', sel: '.busca', t: 'Busca', h: 'Procure por criança, santo ou responsável.' },
+  { aba: 'registrar', e: '🙏', t: 'Pronto!', h: 'Para rever este tour, toque no <b>?</b> no topo da tela.<br><br>Se aparecer <b>"Não salvou"</b>, o registro <b>não foi gravado</b>. Tente de novo e, se continuar, avise a Talita.' }
 ];
 let onbPasso = 0;
 const onbVisto = () => { try { return localStorage.getItem('naninhas_onb') === '1'; } catch (e) { return false; } };
 const onbMarcar = () => { try { localStorage.setItem('naninhas_onb', '1'); } catch (e) {} };
-function abrirOnboarding() { onbPasso = 0; onbRender(); $('onb').classList.add('open'); }
-function fecharOnboarding() { onbMarcar(); $('onb').classList.remove('open'); }
+function abrirOnboarding() { onbPasso = 0; $('onb').classList.add('open'); onbRender(); }
+function fecharOnboarding() {
+  onbMarcar(); $('onb').classList.remove('open');
+  if (abaAtual !== 'registrar') trocarAba('registrar');
+  window.scrollTo(0, 0);
+}
 function onbIr(d) {
   const n = onbPasso + d;
   if (n >= ONB_PASSOS.length) { fecharOnboarding(); return; }
   if (n < 0) return;
   onbPasso = n; onbRender();
 }
+function onbAlvo(p) {
+  if (!p.sel) return null;
+  const lista = Array.isArray(p.sel) ? p.sel : [p.sel];
+  for (const q of lista) { const x = document.querySelector(q); if (x) return x; }
+  return null;
+}
+function onbPosicionar() {
+  if (!$('onb').classList.contains('open')) return;
+  const p = ONB_PASSOS[onbPasso], alvo = onbAlvo(p), spot = $('onb-spot'), card = $('onb-card');
+  if (!alvo) {
+    spot.style.display = 'none'; $('onb-bloq').classList.add('escuro');
+    card.className = 'meio'; return;
+  }
+  $('onb-bloq').classList.remove('escuro');
+  const r = alvo.getBoundingClientRect(), m = 6;
+  spot.style.display = 'block';
+  spot.style.top = (r.top - m) + 'px'; spot.style.left = (r.left - m) + 'px';
+  spot.style.width = (r.width + 2 * m) + 'px'; spot.style.height = (r.height + 2 * m) + 'px';
+  card.className = (r.top + r.height / 2) > (window.innerHeight / 2) ? 'topo' : 'base';
+}
 function onbRender() {
   const p = ONB_PASSOS[onbPasso], ult = onbPasso === ONB_PASSOS.length - 1;
-  $('onb-emoji').textContent = p.e;
+  if (p.aba && abaAtual !== p.aba) trocarAba(p.aba);
+  const alvo = onbAlvo(p);
+  if (alvo && alvo.scrollIntoView) alvo.scrollIntoView({ block: 'center', behavior: 'instant' });
+  else if (!alvo) window.scrollTo(0, 0);
+  $('onb-emoji').textContent = p.e || '';
+  $('onb-emoji').style.display = p.e ? '' : 'none';
   $('onb-titulo').textContent = p.t;
   $('onb-txt').innerHTML = p.h;
-  $('onb-dots').innerHTML = ONB_PASSOS.map((_, i) => '<span class="' + (i === onbPasso ? 'on' : '') + '"></span>').join('');
+  $('onb-prog').textContent = 'Passo ' + (onbPasso + 1) + ' de ' + ONB_PASSOS.length;
   $('onb-voltar').style.visibility = onbPasso === 0 ? 'hidden' : 'visible';
   $('onb-prox').textContent = ult ? 'Começar' : 'Próximo';
   $('onb-pular').style.display = ult ? 'none' : '';
+  onbPosicionar();
+  setTimeout(onbPosicionar, 350);
 }
+window.addEventListener('resize', onbPosicionar);
+window.addEventListener('scroll', onbPosicionar, true);
 
 async function carregarDados() {
   if (!getToken()) { telaCodigo(''); return; }
@@ -1011,16 +1058,18 @@ window.onload = function() { carregarDados(); };
 </header>
 
 <div id="onb" role="dialog" aria-modal="true" aria-labelledby="onb-titulo">
-  <div class="card">
+  <div id="onb-bloq"></div>
+  <div id="onb-spot"></div>
+  <div id="onb-card">
     <div class="onb-emoji" id="onb-emoji"></div>
     <h2 id="onb-titulo"></h2>
     <div class="onb-txt" id="onb-txt"></div>
-    <div class="dots" id="onb-dots"></div>
+    <div class="onb-prog" id="onb-prog"></div>
     <div class="onb-bt">
       <button class="btn btn-ghost" id="onb-voltar" onclick="onbIr(-1)">Voltar</button>
       <button class="btn btn-primary" style="margin-top:0" id="onb-prox" onclick="onbIr(1)">Próximo</button>
     </div>
-    <button class="onb-pular" id="onb-pular" onclick="fecharOnboarding()">Pular</button>
+    <button class="onb-pular" id="onb-pular" onclick="fecharOnboarding()">Pular o tour</button>
   </div>
 </div>
 
