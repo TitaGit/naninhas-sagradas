@@ -190,6 +190,8 @@ const diasAtraso = d => {
   const s = String(d).includes('T') ? String(d).split('T')[0] : String(d);
   return Math.floor((new Date() - new Date(s + 'T12:00:00')) / 86400000);
 };
+// Saudação da mensagem de WhatsApp: usa o nome do responsável quando foi preenchido.
+const saudacao = (resp, emoji) => 'Olá' + (String(resp || '').trim() ? ', ' + String(resp).trim() : '') + '! ' + emoji;
 // A devolução é sempre no próximo domingo depois da saída (se saiu num domingo, no domingo seguinte).
 const devolucaoISO = dataSaida => {
   const s = String(dataSaida).includes('T') ? String(dataSaida).split('T')[0] : String(dataSaida);
@@ -251,7 +253,7 @@ async function carregarDados() {
     const [nn, rr] = await Promise.all([api('getNaninhas'), api('getRegistros')]);
     naninhas = (nn && nn.length) ? nn : NANINHAS_PADRAO;
     registros = rr || [];
-    trocarAba('registrar');
+    trocarAba(location.hash === '#lembretes' ? 'lembretes' : 'registrar');
   } catch (e) {
     const msg = e.message === 'Não autorizado' ? 'Código de acesso incorreto.' : 'Não consegui conectar com a planilha. Confira a internet e tente de novo.';
     $('conteudo').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><p>' + esc(msg) + '</p><button class="btn btn-primary" style="margin-top:14px" onclick="carregarDados()">Tentar de novo</button></div>';
@@ -281,6 +283,8 @@ function trocarAba(aba) {
   else if (aba === 'devolver')  renderDevolver();
   else if (aba === 'historico') renderHistorico();
   else if (aba === 'naninhas')  renderNaninhas();
+  else if (aba === 'lembretes') renderLembretes();
+  else if (aba === 'admin')     renderAdmin();
 }
 
 function abrirHistorico(f) { trocarAba('historico'); filtroAtual = f; renderHistorico(); }
@@ -349,7 +353,7 @@ async function registrar() {
   }
   salvando = false;
   registros.unshift(reg);
-  const msg = `Olá! 😊 A ${crianca} levou hoje a naninha de *${nn.nome}* para casa!\n\n_Oração desta semana:_\n${nn.oracao}\n\nA data de devolução é *${dataDevolucao(dataSaida)}* (próximo domingo). Qualquer dúvida, estamos à disposição! 🙏`;
+  const msg = `${saudacao(responsavel, '😊')} A ${crianca} levou hoje a naninha de *${nn.nome}* para casa!\n\n_Oração desta semana:_\n${nn.oracao}\n\nA data de devolução é *${dataDevolucao(dataSaida)}* (próximo domingo). Qualquer dúvida, estamos à disposição! 🙏`;
   abrirModalWA(telefone, msg);
   formSelecionada = null;
   renderStats();
@@ -480,8 +484,10 @@ function renderHistorico() {
           const dado = (r.dadoOracao===true||r.dadoOracao==='TRUE'||r.dadoOracao==='true') ? '<div class="card-dado">🎲 Com dado de oração</div>' : '';
           const editBtn = `<button class="btn btn-sm btn-ghost" onclick="abrirEdicao('${r.id}')">✏️ Editar</button>`;
           const acoes = !eDevolvida(r) ? `<div class="card-actions">
-            <button class="btn btn-sm btn-wa" onclick="abrirWALembrete('${r.id}','lembrete')">📲 Lembrete</button>
-            ${st==='atrasada'?`<button class="btn btn-sm btn-vermelho" onclick="abrirWALembrete('${r.id}','cobranca')">🔔 Cobrança</button>`:''}
+            ${lembreteHoje(r)
+              ? '<button class="btn btn-sm btn-ghost" disabled>✅ Lembrete enviado hoje</button>'
+              : `<button class="btn btn-sm btn-wa" onclick="abrirWALembrete('${r.id}','lembrete')">📲 Lembrete</button>`
+                + (st==='atrasada'?`<button class="btn btn-sm btn-vermelho" onclick="abrirWALembrete('${r.id}','cobranca')">🔔 Cobrança</button>`:'')}
             <button class="btn btn-sm btn-verde" onclick="abrirDevolucao('${r.id}')">↩️ Devolvida</button>
             ${editBtn}
           </div>` : `<div class="card-actions">${editBtn}</div>`;
@@ -547,17 +553,189 @@ async function excluirNaninha() {
   showToast('🗑️ Naninha excluída.');
 }
 
+// ══ LEMBRETES ══════════════════════════════════════════
+// Enviado hoje = o app já abriu o WhatsApp de lembrete para esse empréstimo neste dia.
+const lembreteHoje = r => !eDevolvida(r) && String(r.lembreteData || '').split('T')[0] === hoje();
+
+async function marcarLembrete(id, tipo) {
+  const d = hoje();
+  try {
+    await api('marcarLembrete', { id, data: d, tipo: tipo === 'cobranca' ? 'cobranca' : 'lembrete' });
+  } catch (e) {
+    showToast('⚠️ Abriu o WhatsApp, mas não consegui marcar como enviado (' + e.message + ').');
+    return;
+  }
+  registros = registros.map(r => r.id === id ? Object.assign({}, r, { lembreteData: d, lembreteTipo: tipo }) : r);
+  if (abaAtual === 'lembretes') renderLembretes();
+  else if (abaAtual === 'historico') renderHistorico();
+}
+
+function renderLembretes() {
+  const abertos = registros.filter(r => !eDevolvida(r));
+  const ordenados = abertos.slice().sort((a, b) =>
+    (vencida(b) - vencida(a)) || (devolucaoISO(a.dataSaida) < devolucaoISO(b.dataSaida) ? -1 : 1));
+  const pend = abertos.filter(r => !lembreteHoje(r)).length;
+  $('conteudo').innerHTML = `
+    <h2 class="section-title">Lembretes de devolução</h2>
+    <p class="section-sub">${pend} pendente${pend !== 1 ? 's' : ''} hoje · ${abertos.length - pend} já enviado${abertos.length - pend !== 1 ? 's' : ''}. Quando um servo envia, o botão trava para todos até o dia seguinte.</p>
+    ${ordenados.length === 0 ? '<div class="empty"><div class="empty-icon">🎉</div><p>Nenhuma naninha emprestada agora.</p></div>' : ordenados.map(r => {
+      const atr = vencida(r);
+      const feito = lembreteHoje(r);
+      const botao = feito
+        ? '<button class="btn btn-sm btn-ghost" disabled>✅ Enviado hoje</button>'
+        : atr
+          ? `<button class="btn btn-sm btn-vermelho" onclick="abrirWALembrete('${esc(r.id)}','cobranca')">🔔 Enviar cobrança</button>`
+          : `<button class="btn btn-sm btn-wa" onclick="abrirWALembrete('${esc(r.id)}','lembrete')">📲 Enviar lembrete</button>`;
+      return `<div class="card ${atr ? 'atrasada' : ''}"><div class="card-top">
+        <div class="card-emoji">${icone(r.naninaId, r.naniaEmoji, 44)}</div>
+        <div class="card-info">
+          <div class="card-nome">${esc(r.crianca)}</div>
+          <div class="card-meta">${esc(r.naniaNome)} · ${esc(r.responsavel || '—')} · ${esc(r.telefone)}</div>
+          <div class="card-meta">Devolver: ${dataDevolucao(r.dataSaida)} ${atr ? '· <b>ATRASADA</b>' : ''}</div>
+          <div class="card-actions">${botao}</div>
+        </div></div></div>`;
+    }).join('')}
+    <div id="aviso-box" class="card" style="margin-top:18px"></div>`;
+  renderAvisoBox();
+}
+
+// Cadastro do próprio servo para receber o aviso por e-mail (a Talita aprova no Admin).
+function avisoSalvo() { try { return JSON.parse(localStorage.getItem('naninhas_aviso') || 'null'); } catch (e) { return null; } }
+function avisoGuardar(v) { try { v ? localStorage.setItem('naninhas_aviso', JSON.stringify(v)) : localStorage.removeItem('naninhas_aviso'); } catch (e) {} }
+
+async function renderAvisoBox() {
+  const box = $('aviso-box');
+  if (!box) return;
+  const salvo = avisoSalvo();
+  if (!salvo) {
+    box.innerHTML = `<div class="card-nome">📧 Quer receber o aviso por e-mail?</div>
+      <p class="section-sub" style="margin:6px 0 10px">Na sexta e no sábado, entre 18h e 19h, você recebe um e-mail só quando houver lembrete pendente. O cadastro precisa ser aprovado pela Talita.</p>
+      <div class="field"><label class="label">Seu nome</label><input type="text" id="av-nome" maxlength="60"></div>
+      <div class="field"><label class="label">Seu e-mail</label><input type="email" id="av-email" maxlength="120" placeholder="nome@exemplo.com"></div>
+      <button class="btn btn-primary" onclick="cadastrarAviso()">Quero receber</button>`;
+    return;
+  }
+  box.innerHTML = '<div class="card-meta">Verificando seu cadastro...</div>';
+  let st = 'nenhum';
+  try { st = (await api('statusAviso', { email: salvo.email })).status; } catch (e) { st = 'erro'; }
+  if (abaAtual !== 'lembretes' || !$('aviso-box')) return;
+  if (st === 'nenhum') { avisoGuardar(null); renderAvisoBox(); return; }
+  const msg = st === 'ativo' ? '✅ Você recebe o aviso por e-mail na sexta e no sábado.'
+    : st === 'pendente' ? '⏳ Cadastro enviado. Falta a Talita aprovar para os e-mails começarem.'
+    : '⚠️ Não consegui verificar agora. Recarregue a página.';
+  $('aviso-box').innerHTML = `<div class="card-nome">📧 Aviso por e-mail</div>
+    <p class="section-sub" style="margin:6px 0 10px">${esc(salvo.nome)} · ${esc(salvo.email)}<br>${msg}</p>
+    <button class="btn btn-sm btn-ghost" onclick="cancelarAviso()">Deixar de receber</button>`;
+}
+
+async function cadastrarAviso() {
+  if (salvando) return;
+  const nome = $('av-nome').value.trim();
+  const email = $('av-email').value.trim().toLowerCase();
+  if (!nome) { showToast('⚠️ Escreva seu nome.'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { showToast('⚠️ E-mail inválido.'); return; }
+  salvando = true;
+  showToast('⏳ Salvando...');
+  try {
+    await api('addAviso', { nome, email });
+  } catch (e) {
+    salvando = false;
+    showToast('⚠️ Não salvou (' + e.message + ').');
+    return;
+  }
+  salvando = false;
+  avisoGuardar({ nome, email });
+  showToast('✅ Cadastro enviado!');
+  renderAvisoBox();
+}
+
+async function cancelarAviso() {
+  const salvo = avisoSalvo();
+  if (!salvo || salvando) return;
+  salvando = true;
+  try { await api('cancelarAviso', { email: salvo.email }); }
+  catch (e) { salvando = false; showToast('⚠️ Não consegui cancelar (' + e.message + ').'); return; }
+  salvando = false;
+  avisoGuardar(null);
+  showToast('Cadastro removido.');
+  renderAvisoBox();
+}
+
+// ══ ADMIN ══════════════════════════════════════════════
+function getAdmin() { try { return localStorage.getItem('naninhas_admin') || ''; } catch (e) { return ''; } }
+function setAdmin(v) { try { v ? localStorage.setItem('naninhas_admin', v) : localStorage.removeItem('naninhas_admin'); } catch (e) {} }
+const apiAdmin = (action, data = {}) => api(action, Object.assign({ adminToken: getAdmin() }, data));
+
+function adminLogin(erro) {
+  $('conteudo').innerHTML = `<h2 class="section-title">Admin</h2>
+    <p class="section-sub">Área da coordenação. Digite o código de administrador.</p>
+    ${erro ? '<p style="color:var(--vermelho);font-weight:700;margin-bottom:10px">' + esc(erro) + '</p>' : ''}
+    <div class="field"><label class="label">Código de administrador</label><input type="password" id="adm-cod" autocomplete="off" onkeydown="if(event.key==='Enter')entrarAdmin()"></div>
+    <button class="btn btn-primary" onclick="entrarAdmin()">Entrar</button>`;
+}
+function entrarAdmin() {
+  const c = ($('adm-cod').value || '').trim();
+  if (!c) return;
+  setAdmin(c);
+  renderAdmin();
+}
+function sairAdmin() { setAdmin(''); adminLogin(''); }
+
+async function renderAdmin() {
+  if (!getAdmin()) { adminLogin(''); return; }
+  $('conteudo').innerHTML = '<div class="loader">Carregando... 🕊️</div>';
+  let lista;
+  try {
+    lista = await apiAdmin('getAvisos');
+  } catch (e) {
+    if (abaAtual !== 'admin') return;
+    if (e.message === 'Admin não autorizado') { setAdmin(''); adminLogin('Código de administrador incorreto.'); }
+    else $('conteudo').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><p>' + esc(e.message) + '</p><button class="btn btn-primary" style="margin-top:14px" onclick="renderAdmin()">Tentar de novo</button></div>';
+    return;
+  }
+  if (abaAtual !== 'admin') return;
+  lista = lista.slice().sort((a, b) => (a.status === 'pendente' ? 0 : 1) - (b.status === 'pendente' ? 0 : 1));
+  const pendentes = lista.filter(a => a.status === 'pendente').length;
+  $('conteudo').innerHTML = `<div class="nn-top-row"><h2 class="section-title" style="margin:0">Admin</h2><button class="btn btn-sm btn-ghost" onclick="sairAdmin()">Sair</button></div>
+    <p class="section-sub">Avisos por e-mail: sexta e sábado, entre 18h e 19h, só quando há lembrete pendente. ${pendentes ? '<b>' + pendentes + ' cadastro' + (pendentes > 1 ? 's' : '') + ' aguardando aprovação.</b>' : ''}</p>
+    ${lista.length === 0 ? '<div class="empty"><div class="empty-icon">📭</div><p>Ninguém se cadastrou ainda.</p></div>' : lista.map(a => `
+      <div class="card"><div class="card-top"><div class="card-info">
+        <div class="card-nome">${esc(a.nome)} <span class="badge ${a.status === 'ativo' ? 'badge-dev' : 'badge-emp'}">${a.status === 'ativo' ? '✅ Ativo' : '⏳ Pendente'}</span></div>
+        <div class="card-meta">${esc(a.email)}</div>
+        <div class="card-actions">
+          ${a.status === 'ativo' ? '' : `<button class="btn btn-sm btn-verde" onclick="adminAviso('${esc(a.id)}','ativo')">Aprovar</button>`}
+          <button class="btn btn-sm btn-ghost" onclick="adminAviso('${esc(a.id)}','remover')">Remover</button>
+        </div></div></div></div>`).join('')}`;
+}
+
+async function adminAviso(id, acao) {
+  if (salvando) return;
+  salvando = true;
+  showToast('⏳ Salvando...');
+  try {
+    if (acao === 'remover') await apiAdmin('deleteAviso', { id });
+    else await apiAdmin('setAviso', { id, status: acao });
+  } catch (e) { salvando = false; showToast('⚠️ Não salvou (' + e.message + ').'); return; }
+  salvando = false;
+  showToast('✅ Pronto.');
+  renderAdmin();
+}
+
 // ══ MODAIS ═════════════════════════════════════════════
-function abrirModalWA(telefone, msg) {
+function abrirModalWA(telefone, msg, regId, tipo) {
   $('wa-textarea').value = msg;
   $('wa-tel').value = telefone;
+  $('wa-reg-id').value = regId || '';
+  $('wa-tipo').value = tipo || '';
   $('modal-wa').classList.add('open');
 }
 function fecharWA() { $('modal-wa').classList.remove('open'); }
 function enviarWA() {
   const tel = $('wa-tel').value.replace(/[^0-9]/g,'');
+  const regId = $('wa-reg-id').value, tipo = $('wa-tipo').value;
   window.open('https://wa.me/55' + tel + '?text=' + encodeURIComponent($('wa-textarea').value), '_blank');
   fecharWA();
+  if (regId) marcarLembrete(regId, tipo);
 }
 
 function abrirWALembrete(id, tipo) {
@@ -565,9 +743,9 @@ function abrirWALembrete(id, tipo) {
   const nn = naninhas.find(n => n.id === r.naninaId);
   const dataDevol = dataDevolucao(r.dataSaida);
   const msg = tipo === 'lembrete'
-    ? 'Olá! 😊 Só passando pra lembrar que a ' + r.crianca + ' ainda está com a naninha de *' + (nn?nn.nome:r.naniaNome) + '*.\n\nA data de devolução é *' + dataDevol + '*. Por favor, lembre de trazer no próximo domingo. Obrigada! 🙏'
-    : 'Olá! 🙏 A naninha de *' + (nn?nn.nome:r.naniaNome) + '* da ' + r.crianca + ' já está há ' + diasAtraso(r.dataSaida) + ' dias com vocês. A data de devolução era *' + dataDevol + '*.\n\nPor favor, lembre de trazer no próximo domingo. Contamos com a colaboração de vocês! 💛';
-  abrirModalWA(r.telefone, msg);
+    ? saudacao(r.responsavel, '😊') + ' Só passando pra lembrar que a ' + r.crianca + ' ainda está com a naninha de *' + (nn?nn.nome:r.naniaNome) + '*.\n\nA data de devolução é *' + dataDevol + '*. Por favor, lembre de trazer no próximo domingo. Obrigada! 🙏'
+    : saudacao(r.responsavel, '🙏') + ' A naninha de *' + (nn?nn.nome:r.naniaNome) + '* da ' + r.crianca + ' já está há ' + diasAtraso(r.dataSaida) + ' dias com vocês. A data de devolução era *' + dataDevol + '*.\n\nPor favor, lembre de trazer no próximo domingo. Contamos com a colaboração de vocês! 💛';
+  abrirModalWA(r.telefone, msg, id, tipo);
 }
 
 function abrirDevolucao(id) {
@@ -735,6 +913,8 @@ window.onload = function() { carregarDados(); };
   <button class="tab" data-aba="devolver" onclick="trocarAba('devolver')">↩️ Devolver</button>
   <button class="tab" data-aba="historico" onclick="trocarAba('historico')">📋 Histórico</button>
   <button class="tab" data-aba="naninhas" onclick="trocarAba('naninhas')">🧸 Naninhas</button>
+  <button class="tab" data-aba="lembretes" onclick="trocarAba('lembretes')">🔔 Lembretes</button>
+  <button class="tab" data-aba="admin" onclick="trocarAba('admin')">⚙️ Admin</button>
 </div>
 
 <div class="main">
@@ -746,6 +926,8 @@ window.onload = function() { carregarDados(); };
     <h3>📲 Enviar pelo WhatsApp</h3>
     <p style="font-size:.82rem;color:var(--cinza);margin-bottom:8px">Edite a mensagem antes de enviar:</p>
     <input type="hidden" id="wa-tel">
+    <input type="hidden" id="wa-reg-id">
+    <input type="hidden" id="wa-tipo">
     <textarea id="wa-textarea" rows="8"></textarea>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="fecharWA()">Cancelar</button>
