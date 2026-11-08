@@ -283,7 +283,8 @@ async function carregarDados() {
     naninhas = (nn && nn.length) ? nn : NANINHAS_PADRAO;
     registros = rr || [];
     setTentativas('equipe', 0);
-    trocarAba(location.hash === '#lembretes' ? 'lembretes' : 'registrar');
+    const atalho = String(location.hash || '').replace('#', '');
+    trocarAba(['lembretes', 'admin'].indexOf(atalho) >= 0 ? atalho : 'registrar');
   } catch (e) {
     if (e.message === 'Não autorizado') {
       const n = tentativas('equipe') + 1;
@@ -646,8 +647,11 @@ async function renderAvisoBox() {
   if (!salvo) {
     box.innerHTML = `<div class="card-nome">📧 Quer receber o aviso por e-mail?</div>
       <p class="section-sub" style="margin:6px 0 10px">Na sexta e no sábado, entre 18h e 19h, você recebe um e-mail só quando houver lembrete pendente. O cadastro precisa ser aprovado pela Talita.</p>
-      <div class="field"><label class="label">Seu nome</label><input type="text" id="av-nome" maxlength="60"></div>
-      <div class="field"><label class="label">Seu e-mail</label><input type="email" id="av-email" maxlength="120" placeholder="nome@exemplo.com"></div>
+      <div class="field"><label class="label">Nome e sobrenome *</label><input type="text" id="av-nome" maxlength="60" placeholder="Ex: Maria Silva"></div>
+      <div class="field"><label class="label">E-mail *</label><input type="email" id="av-email" maxlength="120" placeholder="nome@exemplo.com"></div>
+      <div class="field"><label class="label">Onde você serve? *</label><select id="av-local"><option value="">Escolha</option><option value="Paróquia">Paróquia</option><option value="Capela">Capela</option></select></div>
+      <div class="field"><label class="label">Turma *</label><select id="av-turma"><option value="">Escolha</option><option value="A">Turma A</option><option value="B">Turma B</option><option value="C">Turma C</option></select></div>
+      <div class="field"><label class="label">Horário *</label><input type="text" id="av-horario" maxlength="20" placeholder="Ex: 9h"></div>
       <button class="btn btn-primary" onclick="cadastrarAviso()">Quero receber</button>`;
     return;
   }
@@ -666,14 +670,16 @@ async function renderAvisoBox() {
 
 async function cadastrarAviso() {
   if (salvando) return;
-  const nome = $('av-nome').value.trim();
+  const nome = $('av-nome').value.trim().replace(/\s+/g, ' ');
   const email = $('av-email').value.trim().toLowerCase();
-  if (!nome) { showToast('⚠️ Escreva seu nome.'); return; }
+  const local = $('av-local').value, turma = $('av-turma').value, horario = $('av-horario').value.trim();
+  if (!/\S+\s+\S+/.test(nome)) { showToast('⚠️ Escreva nome e sobrenome.'); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { showToast('⚠️ E-mail inválido.'); return; }
+  if (!local || !turma || !horario) { showToast('⚠️ Escolha o local, a turma e informe o horário.'); return; }
   salvando = true;
   showToast('⏳ Salvando...');
   try {
-    await api('addAviso', { nome, email });
+    await api('addAviso', { nome, email, local, turma, horario });
   } catch (e) {
     salvando = false;
     showToast('⚠️ Não salvou (' + e.message + ').');
@@ -755,6 +761,7 @@ async function renderAdmin() {
       <div class="card"><div class="card-top"><div class="card-info">
         <div class="card-nome">${esc(a.nome)} <span class="badge ${a.status === 'ativo' ? 'badge-dev' : 'badge-emp'}">${a.status === 'ativo' ? '✅ Ativo' : '⏳ Pendente'}</span></div>
         <div class="card-meta">${esc(a.email)}</div>
+        <div class="card-meta">${[a.local, a.turma ? 'Turma ' + a.turma : '', a.horario].filter(Boolean).map(esc).join(' · ') || 'Sem dados de equipe'}</div>
         <div class="card-actions">
           ${a.status === 'ativo' ? '' : `<button class="btn btn-sm btn-verde" onclick="adminAviso('${esc(a.id)}','ativo')">Aprovar</button>`}
           <button class="btn btn-sm btn-ghost" onclick="adminAviso('${esc(a.id)}','remover')">Remover</button>
