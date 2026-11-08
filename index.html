@@ -123,7 +123,7 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&a
 const getToken = () => { try { return localStorage.getItem('naninhas_codigo') || ''; } catch (e) { return ''; } };
 const setToken = v => { try { if (v) localStorage.setItem('naninhas_codigo', v); else localStorage.removeItem('naninhas_codigo'); } catch (e) {} };
 // WhatsApp da coordenação (só números, com DDD, ex: 11999990000). Aparece depois de várias tentativas erradas.
-const WHATSAPP_COORD = '';
+const WHATSAPP_COORD = '11975598727';
 const MAX_TENTATIVAS = 10;
 const tentativas = k => { try { return parseInt(localStorage.getItem('naninhas_tent_' + k) || '0', 10) || 0; } catch (e) { return 0; } };
 const setTentativas = (k, n) => { try { if (n) localStorage.setItem('naninhas_tent_' + k, String(n)); else localStorage.removeItem('naninhas_tent_' + k); } catch (e) {} };
