@@ -309,7 +309,7 @@ const ONB_PASSOS = [
   { aba: 'lembretes', sel: ['.card-actions', '.section-sub'], t: 'Lembretes', h: 'A aba <b>Lembretes</b> lista quem ainda não devolveu. Toque em <b>Enviar lembrete</b> (ou <b>cobrança</b>, se atrasou) e o WhatsApp abre com a mensagem pronta. Depois de enviado, o botão trava até o dia seguinte para todos.' },
   { aba: 'lembretes', sel: '#aviso-box', t: 'Aviso por e-mail', h: 'Aqui você se cadastra para receber um e-mail na sexta e no sábado quando houver lembretes pendentes. A Talita aprova o cadastro.' },
   { aba: 'historico', sel: '.stats', t: 'As bolinhas', h: 'Mostram quantas estão <b>Emprestadas</b>, <b>Em atraso</b> e <b>Devolvidas</b>. Toque em uma para abrir o Histórico já filtrado.' },
-  { aba: 'historico', sel: '.filtros', t: 'Histórico e filtros', h: 'Na aba <b>Histórico</b> você filtra por situação e por local e, em cada cartão, pode tocar em <b>Editar</b> para corrigir um registro.' },
+  { aba: 'historico', sel: '.filtros', t: 'Histórico e filtros', h: 'Na aba <b>Histórico</b> você filtra por situação e por local. Em cada cartão: <b>Lembrete</b> avisa a família, <b>Devolvida</b> registra a volta e <b>Editar</b> corrige um registro.<br><br>O botão <b>Cobrança</b> fica cinza e só libera depois do domingo de devolução, se a naninha ainda não voltou. A mensagem pede a naninha de volta para ajudar outros lares a evangelizar.' },
   { aba: 'historico', sel: '.busca', t: 'Busca', h: 'Procure por criança, santo ou responsável.' },
   { aba: 'registrar', e: '🙏', t: 'Pronto!', h: 'Para rever este tour, toque no <b>?</b> no topo da tela.<br><br>Se aparecer <b>"Não salvou"</b>, o registro <b>não foi gravado</b>. Tente de novo e, se continuar, avise a Talita.' }
 ];
@@ -618,7 +618,7 @@ function renderHistorico() {
             ${lembreteHoje(r)
               ? '<button class="btn btn-sm btn-ghost" disabled>✅ Lembrete enviado hoje</button>'
               : `<button class="btn btn-sm btn-wa" onclick="abrirWALembrete('${r.id}','lembrete')">📲 Lembrete</button>`
-                + (st==='atrasada'?`<button class="btn btn-sm btn-vermelho" onclick="abrirWALembrete('${r.id}','cobranca')">🔔 Cobrança</button>`:'')}
+                + (st==='atrasada'?`<button class="btn btn-sm btn-vermelho" onclick="abrirWALembrete('${r.id}','cobranca')">🔔 Cobrança</button>`:'<button class="btn btn-sm btn-ghost" disabled title="Libera depois da data de devolução">🔔 Cobrança (após o domingo)</button>')}
             <button class="btn btn-sm btn-verde" onclick="abrirDevolucao('${r.id}')">↩️ Devolvida</button>
             ${editBtn}
           </div>` : `<div class="card-actions">${editBtn}</div>`;
@@ -894,11 +894,12 @@ function enviarWA() {
 
 function abrirWALembrete(id, tipo) {
   const r  = registros.find(x => x.id === id);
+  if (tipo === 'cobranca' && !vencida(r)) { showToast('A cobrança só vale depois da data de devolução.'); return; }
   const nn = naninhas.find(n => n.id === r.naninaId);
   const dataDevol = dataDevolucao(r.dataSaida);
   const msg = tipo === 'lembrete'
     ? saudacao(r.responsavel, '😊') + ' Só passando pra lembrar que a ' + r.crianca + ' ainda está com a naninha de *' + (nn?nn.nome:r.naniaNome) + '*.\n\nA data de devolução é *' + dataDevol + '*. 🙏 Por favor, lembre de trazer no próximo domingo. Obrigada!'
-    : saudacao(r.responsavel, '🙏') + ' A naninha de *' + (nn?nn.nome:r.naniaNome) + '* da ' + r.crianca + ' já está há ' + diasAtraso(r.dataSaida) + ' dias com vocês. A data de devolução era *' + dataDevol + '*.\n\nPor favor, lembre de trazer no próximo domingo. 💛 Contamos com a colaboração de vocês!';
+    : saudacao(r.responsavel, '🙏') + ' A naninha de *' + (nn?nn.nome:r.naniaNome) + '*, que está com a ' + r.crianca + ', deveria ter sido devolvida em *' + dataDevol + '*.\n\nPrecisamos que ela volte para ajudar outros lares a evangelizar. 💛 Pode trazer no próximo domingo? Contamos com vocês, obrigada!';
   abrirModalWA(r.telefone, msg, id, tipo);
 }
 
