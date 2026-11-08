@@ -727,6 +727,10 @@ async function renderAdmin() {
     lista = await apiAdmin('getAvisos');
   } catch (e) {
     if (abaAtual !== 'admin') return;
+    if (e.message === 'Não autorizado') { // o código da EQUIPE deixou de valer (api() já limpou): pede de novo
+      telaCodigo('O código da equipe não foi aceito. Digite de novo. Se continuar assim, a coordenação deve conferir a propriedade CODIGO no Apps Script.');
+      return;
+    }
     setAdmin(''); // nunca fica preso num código errado: volta para o formulário
     if (e.message === 'Admin não autorizado') {
       const n = tentativas('admin') + 1;
